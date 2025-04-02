@@ -3,6 +3,8 @@ import { useState, useEffect } from "react";
 import { Heart } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface LikeButtonProps {
   articleId: string;
@@ -12,44 +14,113 @@ export function LikeButton({ articleId }: LikeButtonProps) {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [likeId, setLikeId] = useState<string | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
-    // Verificar se o artigo já foi curtido pelo usuário
-    const likedArticles = JSON.parse(localStorage.getItem("likedArticles") || "{}");
-    setLiked(!!likedArticles[articleId]);
+    // Only fetch likes if we have an articleId
+    if (!articleId) return;
     
-    // Obter contagem de curtidas (simulado, seria Supabase)
-    setLikeCount(Math.floor(Math.random() * 50));
-  }, [articleId]);
+    const fetchLikes = async () => {
+      // Get total like count for this article
+      const { count, error: countError } = await supabase
+        .from('likes')
+        .select('*', { count: 'exact', head: true })
+        .eq('article_id', articleId);
+        
+      if (countError) {
+        console.error("Error fetching like count:", countError);
+      } else {
+        setLikeCount(count || 0);
+      }
+      
+      // Check if the current user liked this article
+      if (user) {
+        const { data, error } = await supabase
+          .from('likes')
+          .select('id')
+          .eq('article_id', articleId)
+          .eq('user_id', user.id)
+          .single();
+          
+        if (error && error.code !== 'PGRST116') { // PGRST116 is the error code for no rows returned
+          console.error("Error checking if user liked article:", error);
+        } else if (data) {
+          setLiked(true);
+          setLikeId(data.id);
+        }
+      }
+    };
+    
+    fetchLikes();
+  }, [articleId, user]);
 
-  const handleLike = () => {
-    const likedArticles = JSON.parse(localStorage.getItem("likedArticles") || "{}");
-    
-    // Toggle like
-    if (liked) {
-      delete likedArticles[articleId];
-      setLikeCount((prev) => prev - 1);
+  const handleLike = async () => {
+    if (!user) {
       toast({
-        title: "Curtida removida",
-        description: "Você removeu sua curtida deste artigo",
+        title: "Você precisa fazer login",
+        description: "Faça login para curtir este artigo",
+        variant: "destructive",
       });
-    } else {
-      likedArticles[articleId] = true;
-      setLikeCount((prev) => prev + 1);
-      setIsAnimating(true);
-      toast({
-        title: "Artigo curtido!",
-        description: "Você curtiu este artigo",
-      });
+      return;
     }
     
-    // Atualizar localStorage e estado
-    localStorage.setItem("likedArticles", JSON.stringify(likedArticles));
-    setLiked(!liked);
-    
-    // Finalizar animação
-    setTimeout(() => setIsAnimating(false), 1000);
+    try {
+      if (liked) {
+        // Remove like
+        if (likeId) {
+          const { error } = await supabase
+            .from('likes')
+            .delete()
+            .eq('id', likeId);
+            
+          if (error) throw error;
+          
+          setLikeCount((prev) => prev - 1);
+          setLiked(false);
+          setLikeId(null);
+          
+          toast({
+            title: "Curtida removida",
+            description: "Você removeu sua curtida deste artigo",
+          });
+        }
+      } else {
+        // Add like
+        setIsAnimating(true);
+        
+        const { data, error } = await supabase
+          .from('likes')
+          .insert({
+            article_id: articleId,
+            user_id: user.id,
+          })
+          .select('id')
+          .single();
+          
+        if (error) throw error;
+        
+        setLikeCount((prev) => prev + 1);
+        setLiked(true);
+        setLikeId(data.id);
+        
+        toast({
+          title: "Artigo curtido!",
+          description: "Você curtiu este artigo",
+        });
+      }
+    } catch (error) {
+      console.error("Error updating like:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível processar sua curtida",
+        variant: "destructive",
+      });
+    } finally {
+      // Finalizar animação
+      setTimeout(() => setIsAnimating(false), 1000);
+    }
   };
 
   return (
@@ -71,7 +142,7 @@ export function LikeButton({ articleId }: LikeButtonProps) {
       />
       <span>{likeCount}</span>
       
-      <style>
+      <style jsx>
         {`
           @keyframes heartbeat {
             0%, 100% { transform: scale(1); }

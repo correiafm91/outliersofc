@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { NavBar } from "@/components/nav-bar";
 import { Footer } from "@/components/footer";
 import { ArticleCard } from "@/components/article-card";
@@ -8,23 +8,62 @@ import { AnimatedElement } from "@/components/ui/animated-element";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 export default function Index() {
   const [articles, setArticles] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const articlesPerPage = 6;
+  
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading } = useAuth();
 
+  // Parse page number from URL query parameter
   useEffect(() => {
-    // Fetch articles from Supabase
+    const searchParams = new URLSearchParams(location.search);
+    const page = parseInt(searchParams.get('page') || '1');
+    setCurrentPage(isNaN(page) || page < 1 ? 1 : page);
+  }, [location.search]);
+
+  useEffect(() => {
+    // Fetch articles from Supabase with pagination
     const fetchArticles = async () => {
+      setIsLoading(true);
+
+      // Calculate pagination range
+      const from = (currentPage - 1) * articlesPerPage;
+      const to = from + articlesPerPage - 1;
+
+      // First, get total count for pagination
+      const { count, error: countError } = await supabase
+        .from('articles')
+        .select('*', { count: 'exact', head: true });
+      
+      if (countError) {
+        console.error("Error fetching article count:", countError);
+      } else {
+        setTotalCount(count || 0);
+      }
+      
+      // Then fetch the actual articles for the current page
       const { data, error } = await supabase
         .from('articles')
         .select(`
           *,
           profiles:author_id (username, avatar_url, sector)
         `)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(from, to);
       
       if (error) {
         console.error("Error fetching articles:", error);
@@ -36,7 +75,15 @@ export default function Index() {
     };
 
     fetchArticles();
-  }, []);
+  }, [currentPage]);
+
+  // Handle page change
+  const handlePageChange = (page) => {
+    navigate(`/?page=${page}`);
+  };
+
+  // Calculate total pages
+  const totalPages = Math.ceil(totalCount / articlesPerPage);
 
   if (loading) {
     return (
@@ -144,16 +191,49 @@ export default function Index() {
             )}
           </div>
           
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="mt-12">
+              <Pagination>
+                <PaginationContent>
+                  {currentPage > 1 && (
+                    <PaginationItem>
+                      <PaginationPrevious 
+                        onClick={() => handlePageChange(currentPage - 1)} 
+                      />
+                    </PaginationItem>
+                  )}
+                  
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <PaginationItem key={page}>
+                      <PaginationLink
+                        isActive={page === currentPage}
+                        onClick={() => handlePageChange(page)}
+                      >
+                        {page}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+                  
+                  {currentPage < totalPages && (
+                    <PaginationItem>
+                      <PaginationNext 
+                        onClick={() => handlePageChange(currentPage + 1)} 
+                      />
+                    </PaginationItem>
+                  )}
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
+          
           {articles.length > 0 && (
-            <div className="mt-12 text-center">
+            <div className="mt-8 text-center">
               <Button 
                 onClick={() => navigate("/criar-artigo")} 
-                className="bg-white text-black hover:bg-zinc-200 mr-4"
+                className="bg-white text-black hover:bg-zinc-200"
               >
                 Criar artigo
-              </Button>
-              <Button variant="outline" className="border-zinc-700 hover:bg-zinc-900">
-                Carregar mais artigos
               </Button>
             </div>
           )}
