@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 type AuthMode = "signin" | "signup";
 
@@ -26,20 +27,46 @@ export function AuthForm() {
     setIsLoading(true);
     
     try {
-      // Simulando authenticação - será substituído por Supabase quando integrado
-      setTimeout(() => {
-        // Fingindo um login bem-sucedido
-        localStorage.setItem("user", JSON.stringify({ email }));
+      if (mode === "signin") {
+        // Sign in
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (error) throw error;
+
         toast({
-          title: mode === "signin" ? "Login realizado com sucesso!" : "Conta criada com sucesso!",
+          title: "Login realizado com sucesso!",
           description: "Bem-vindo à Outliers.",
         });
         navigate("/");
-      }, 1000);
-    } catch (error) {
+      } else {
+        // Sign up
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: "Conta criada com sucesso!",
+          description: data.user?.identities?.length === 0 
+            ? "Você já tem uma conta. Por favor faça login."
+            : "Verifique seu email para confirmar o cadastro.",
+        });
+        
+        // If the user already exists, switch to sign in mode
+        if (data.user?.identities?.length === 0) {
+          setMode("signin");
+        }
+      }
+    } catch (error: any) {
+      console.error("Authentication error:", error);
       toast({
         title: "Erro",
-        description: "Houve um problema ao processar sua solicitação. Tente novamente.",
+        description: error.message || "Houve um problema ao processar sua solicitação. Tente novamente.",
         variant: "destructive",
       });
     } finally {

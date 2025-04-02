@@ -9,13 +9,18 @@ import Auth from "./pages/Auth";
 import ArticleDetail from "./pages/ArticleDetail";
 import NotFound from "./pages/NotFound";
 import { useEffect } from "react";
+import { AuthProvider } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
 
 const App = () => {
-  // Adicionar classe para animação de rolagem suave
+  // Add class for smooth scrolling animation
   useEffect(() => {
     document.documentElement.style.scrollBehavior = "smooth";
+    
+    // Set São Paulo timezone
+    const now = new Date();
+    now.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
     
     return () => {
       document.documentElement.style.scrollBehavior = "";
@@ -24,18 +29,20 @@ const App = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/article/:id" element={<ArticleDetail />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/article/:id" element={<ArticleDetail />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 };

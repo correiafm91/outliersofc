@@ -4,21 +4,16 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { Menu, X } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function NavBar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const { user, signOut } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Checar se o usuário está logado
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
     };
@@ -27,14 +22,21 @@ export function NavBar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem("user");
-    setUser(null);
-    toast({
-      title: "Logout realizado",
-      description: "Você foi desconectado com sucesso.",
-    });
-    navigate("/auth");
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Logout realizado",
+        description: "Você foi desconectado com sucesso.",
+      });
+      navigate("/auth");
+    } catch (error) {
+      toast({
+        title: "Erro ao sair",
+        description: "Não foi possível fazer logout. Tente novamente.",
+        variant: "destructive",
+      });
+    }
   };
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
@@ -63,9 +65,14 @@ export function NavBar() {
           <Link to="/economia" className="text-white hover:text-gray-300 transition-colors">Economia</Link>
           <Link to="/tecnologia" className="text-white hover:text-gray-300 transition-colors">Tecnologia</Link>
           {user ? (
-            <Button variant="outline" onClick={handleLogout} className="border-white text-white hover:bg-white hover:text-black transition-colors">
-              Sair
-            </Button>
+            <>
+              <Button asChild variant="ghost" className="text-white hover:bg-white/10">
+                <Link to="/perfil">Meu Perfil</Link>
+              </Button>
+              <Button variant="outline" onClick={handleLogout} className="border-white text-white hover:bg-white hover:text-black transition-colors">
+                Sair
+              </Button>
+            </>
           ) : (
             <Button asChild className="bg-white text-black hover:bg-gray-200">
               <Link to="/auth">Entrar</Link>
@@ -88,9 +95,12 @@ export function NavBar() {
             <Link to="/economia" className="text-white hover:text-gray-300 transition-colors py-2" onClick={toggleMenu}>Economia</Link>
             <Link to="/tecnologia" className="text-white hover:text-gray-300 transition-colors py-2" onClick={toggleMenu}>Tecnologia</Link>
             {user ? (
-              <Button variant="outline" onClick={() => { handleLogout(); toggleMenu(); }} className="border-white text-white hover:bg-white hover:text-black transition-colors">
-                Sair
-              </Button>
+              <>
+                <Link to="/perfil" className="text-white hover:text-gray-300 transition-colors py-2" onClick={toggleMenu}>Meu Perfil</Link>
+                <Button variant="outline" onClick={() => { handleLogout(); toggleMenu(); }} className="border-white text-white hover:bg-white hover:text-black transition-colors">
+                  Sair
+                </Button>
+              </>
             ) : (
               <Button asChild className="bg-white text-black hover:bg-gray-200">
                 <Link to="/auth" onClick={toggleMenu}>Entrar</Link>
