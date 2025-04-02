@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { NavBar } from "@/components/nav-bar";
 import { Footer } from "@/components/footer";
@@ -23,11 +23,15 @@ export default function CreateArticle() {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Redirecionar se o usuário não estiver logado
-  if (!user) {
-    navigate("/auth");
-    return null;
-  }
+  useEffect(() => {
+    // Redirect if user is not logged in
+    if (!user) {
+      navigate("/auth");
+    }
+  }, [user, navigate]);
+
+  // If user is null, don't render anything while redirecting
+  if (!user) return null;
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -60,16 +64,17 @@ export default function CreateArticle() {
     setIsSubmitting(true);
 
     try {
-      // Upload da imagem
+      // Upload da imagem para o bucket 'images'
       const fileExt = image.name.split('.').pop();
       const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
       const filePath = `article-images/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
+      const { error: uploadError, data: uploadData } = await supabase.storage
         .from('images')
         .upload(filePath, image);
 
       if (uploadError) {
+        console.error('Erro no upload da imagem:', uploadError);
         throw new Error('Erro ao fazer upload da imagem');
       }
 
@@ -94,6 +99,7 @@ export default function CreateArticle() {
         .single();
 
       if (error) {
+        console.error('Erro ao inserir artigo:', error);
         throw new Error('Erro ao criar artigo');
       }
 

@@ -8,10 +8,12 @@ import { Button } from "@/components/ui/button";
 import { ArticleCard } from "@/components/article-card";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { ProfileEditForm } from "@/components/profile-edit-form";
 
 export default function UserProfile() {
   const [userArticles, setUserArticles] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -44,6 +46,8 @@ export default function UserProfile() {
     fetchUserData();
   }, [user, navigate]);
 
+  if (!user) return null;
+  
   if (isLoading) {
     return (
       <div className="min-h-screen bg-black text-white">
@@ -66,34 +70,47 @@ export default function UserProfile() {
       <div className="pt-24 pb-20">
         <div className="container mx-auto px-4">
           <AnimatedElement>
-            <div className="mb-12 flex flex-col md:flex-row items-center md:items-start gap-6">
-              <div className="w-24 h-24 rounded-full bg-zinc-800 flex items-center justify-center text-4xl">
-                {user?.email?.charAt(0).toUpperCase() || "U"}
-              </div>
-              
-              <div className="text-center md:text-left">
-                <h1 className="text-3xl font-bold mb-2">
-                  {user?.email?.split('@')[0] || "Usuário"}
+            {isEditing ? (
+              <div className="mb-12">
+                <h1 className="text-3xl font-bold mb-8 border-b border-zinc-800 pb-4">
+                  Editar Perfil
                 </h1>
-                <p className="text-zinc-400 mb-4">
-                  {user?.email || ""}
-                </p>
-                <div className="flex flex-wrap justify-center md:justify-start gap-2">
-                  <Button 
-                    onClick={() => navigate("/criar-artigo")} 
-                    className="bg-white text-black hover:bg-zinc-200"
-                  >
-                    Novo artigo
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="border-zinc-700 hover:bg-zinc-800"
-                  >
-                    Editar perfil
-                  </Button>
+                <ProfileEditForm 
+                  onCancel={() => setIsEditing(false)} 
+                  onSuccess={() => setIsEditing(false)}
+                />
+              </div>
+            ) : (
+              <div className="mb-12 flex flex-col md:flex-row items-center md:items-start gap-6">
+                <div className="w-24 h-24 rounded-full bg-zinc-800 flex items-center justify-center text-4xl">
+                  {user?.email?.charAt(0).toUpperCase() || "U"}
+                </div>
+                
+                <div className="text-center md:text-left">
+                  <h1 className="text-3xl font-bold mb-2">
+                    {user?.email?.split('@')[0] || "Usuário"}
+                  </h1>
+                  <p className="text-zinc-400 mb-4">
+                    {user?.email || ""}
+                  </p>
+                  <div className="flex flex-wrap justify-center md:justify-start gap-2">
+                    <Button 
+                      onClick={() => navigate("/criar-artigo")} 
+                      className="bg-white text-black hover:bg-zinc-200"
+                    >
+                      Novo artigo
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setIsEditing(true)}
+                      className="border-zinc-700 hover:bg-zinc-800"
+                    >
+                      Editar perfil
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             <h2 className="text-2xl font-bold mb-6 border-b border-zinc-800 pb-4">
               Seus artigos
