@@ -8,6 +8,8 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ArticleDetail from "./pages/ArticleDetail";
 import NotFound from "./pages/NotFound";
+import CreateArticle from "./pages/CreateArticle";
+import UserProfile from "./pages/UserProfile";
 import { useEffect } from "react";
 import { AuthProvider } from "./contexts/AuthContext";
 
@@ -52,6 +54,11 @@ const App = () => {
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/article/:id" element={<ArticleDetail />} />
+              <Route path="/criar-artigo" element={<CreateArticle />} />
+              <Route path="/perfil" element={<UserProfile />} />
+              <Route path="/negocios" element={<Index />} />
+              <Route path="/economia" element={<Index />} />
+              <Route path="/tecnologia" element={<Index />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
