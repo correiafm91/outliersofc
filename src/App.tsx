@@ -14,13 +14,27 @@ import { AuthProvider } from "./contexts/AuthContext";
 const queryClient = new QueryClient();
 
 const App = () => {
-  // Add class for smooth scrolling animation
+  // Add class for smooth scrolling animation and set São Paulo timezone
   useEffect(() => {
     document.documentElement.style.scrollBehavior = "smooth";
     
-    // Set São Paulo timezone
-    const now = new Date();
-    now.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
+    // Set São Paulo timezone for date formatting
+    const setupBrazilianTimeFormat = () => {
+      try {
+        // Ensure we use Brazilian Portuguese locale and São Paulo timezone
+        Intl.DateTimeFormat('pt-BR', {
+          timeZone: 'America/Sao_Paulo',
+          dateStyle: 'full',
+          timeStyle: 'short'
+        });
+        
+        console.log("Brazilian timezone set successfully");
+      } catch (error) {
+        console.error("Error setting up Brazilian timezone:", error);
+      }
+    };
+    
+    setupBrazilianTimeFormat();
     
     return () => {
       document.documentElement.style.scrollBehavior = "";

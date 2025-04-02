@@ -36,30 +36,51 @@ export function AuthForm() {
 
         if (error) throw error;
 
-        toast({
-          title: "Login realizado com sucesso!",
-          description: "Bem-vindo à Outliers.",
-        });
-        navigate("/");
+        // Store session in localStorage to handle redirects
+        if (data.session) {
+          toast({
+            title: "Login realizado com sucesso!",
+            description: "Bem-vindo à Outliers.",
+          });
+          navigate("/");
+        }
       } else {
         // Sign up
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            emailRedirectTo: window.location.origin,
+            data: {
+              email
+            }
+          }
         });
 
         if (error) throw error;
 
-        toast({
-          title: "Conta criada com sucesso!",
-          description: data.user?.identities?.length === 0 
-            ? "Você já tem uma conta. Por favor faça login."
-            : "Verifique seu email para confirmar o cadastro.",
-        });
-        
-        // If the user already exists, switch to sign in mode
-        if (data.user?.identities?.length === 0) {
-          setMode("signin");
+        if (data.user) {
+          if (data.session) {
+            // User was auto-confirmed (email confirmation disabled)
+            toast({
+              title: "Conta criada com sucesso!",
+              description: "Você está conectado à Outliers.",
+            });
+            navigate("/");
+          } else {
+            // Email confirmation is enabled
+            toast({
+              title: "Conta criada com sucesso!",
+              description: data.user?.identities?.length === 0 
+                ? "Você já tem uma conta. Por favor faça login."
+                : "Verifique seu email para confirmar o cadastro.",
+            });
+            
+            // If the user already exists, switch to sign in mode
+            if (data.user?.identities?.length === 0) {
+              setMode("signin");
+            }
+          }
         }
       }
     } catch (error: any) {

@@ -2,17 +2,30 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthForm } from "@/components/auth-form";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Auth() {
   const navigate = useNavigate();
+  const { user, loading } = useAuth();
 
   useEffect(() => {
-    // Se já estiver logado, redirecionar para a homepage
-    const user = localStorage.getItem("user");
-    if (user) {
+    // If user is already logged in, redirect to the homepage
+    if (!loading && user) {
       navigate("/");
     }
-  }, [navigate]);
+  }, [navigate, user, loading]);
+
+  // Show loading state while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="animate-pulse flex flex-col items-center">
+          <div className="h-8 w-8 bg-zinc-700 rounded-full"></div>
+          <p className="mt-4 text-zinc-500">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-black bg-[url('https://images.unsplash.com/photo-1579532537598-459ecdaf39cc?q=80&w=1887&auto=format&fit=crop')] bg-cover bg-center bg-no-repeat bg-blend-overlay bg-black/60">
