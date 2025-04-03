@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +23,7 @@ const profileFormSchema = z.object({
     message: "Nome de usuário deve ter pelo menos 2 caracteres.",
   }),
   sector: z.string().optional(),
+  bio: z.string().optional(),
   avatar_url: z.string().optional(),
 });
 
@@ -35,6 +37,9 @@ interface ProfileEditFormProps {
 export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [profileData, setProfileData] = useState<ProfileFormValues | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -43,6 +48,7 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
     defaultValues: {
       username: "",
       sector: "",
+      bio: "",
       avatar_url: "",
     },
   });
@@ -54,7 +60,7 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
       setIsLoading(true);
       const { data, error } = await supabase
         .from("profiles")
-        .select("username, sector, avatar_url")
+        .select("username, sector, bio, avatar_url")
         .eq("id", user.id)
         .single();
 
@@ -70,8 +76,13 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
         form.reset({
           username: data.username || user.email?.split('@')[0] || "",
           sector: data.sector || "",
+          bio: data.bio || "",
           avatar_url: data.avatar_url || "",
         });
+
+        if (data.avatar_url) {
+          setAvatarPreview(data.avatar_url);
+        }
       }
       setIsLoading(false);
     };
@@ -79,17 +90,79 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
     fetchProfile();
   }, [user, form, toast]);
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Preview the selected image
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setAvatarPreview(event.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+    setAvatarFile(file);
+  };
+
+  const uploadAvatar = async (): Promise<string | null> => {
+    if (!avatarFile || !user) return null;
+
+    try {
+      // Create a unique file path
+      const fileExt = avatarFile.name.split('.').pop();
+      const fileName = `${user.id}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('user-avatars')
+        .upload(filePath, avatarFile, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Get the public URL
+      const { data } = supabase.storage
+        .from('user-avatars')
+        .getPublicUrl(filePath);
+
+      return data.publicUrl;
+    } catch (error) {
+      console.error('Erro ao fazer upload da imagem:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível fazer o upload da imagem.",
+        variant: "destructive",
+      });
+      return null;
+    }
+  };
+
   const onSubmit = async (values: ProfileFormValues) => {
     if (!user) return;
 
     setIsLoading(true);
     try {
+      // Upload avatar if a new one was selected
+      let avatarUrl = values.avatar_url;
+      if (avatarFile) {
+        const uploadedUrl = await uploadAvatar();
+        if (uploadedUrl) {
+          avatarUrl = uploadedUrl;
+        }
+      }
+
+      // Check if username is "Outliers Ofc" to set verified status
+      const isVerified = values.username === "Outliers Ofc";
+
       const { error } = await supabase
         .from("profiles")
         .update({
           username: values.username,
           sector: values.sector,
-          avatar_url: values.avatar_url,
+          bio: values.bio,
+          avatar_url: avatarUrl,
+          is_verified: isVerified
         })
         .eq("id", user.id);
 
@@ -127,6 +200,35 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 max-w-2xl mx-auto">
+        <div className="flex justify-center mb-6">
+          <div className="relative group">
+            <div className="w-32 h-32 rounded-full overflow-hidden bg-zinc-800 flex items-center justify-center text-5xl text-zinc-400">
+              {avatarPreview ? (
+                <img 
+                  src={avatarPreview} 
+                  alt="Avatar preview" 
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                user?.email?.charAt(0).toUpperCase() || "U"
+              )}
+            </div>
+            <label 
+              htmlFor="avatar-upload" 
+              className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity"
+            >
+              <span className="text-white text-sm font-medium">Alterar foto</span>
+            </label>
+            <input 
+              id="avatar-upload" 
+              type="file" 
+              accept="image/*"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+          </div>
+        </div>
+
         <FormField
           control={form.control}
           name="username"
@@ -166,19 +268,35 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
 
         <FormField
           control={form.control}
-          name="avatar_url"
+          name="bio"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>URL da foto de perfil</FormLabel>
+              <FormLabel>Biografia</FormLabel>
               <FormControl>
-                <Input
-                  placeholder="https://exemplo.com/sua-foto.jpg"
-                  className="bg-zinc-900 border-zinc-700"
+                <Textarea
+                  placeholder="Conte um pouco sobre você..."
+                  className="bg-zinc-900 border-zinc-700 min-h-[100px]"
                   {...field}
                   value={field.value || ""}
                 />
               </FormControl>
               <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="avatar_url"
+          render={({ field }) => (
+            <FormItem className="hidden">
+              <FormControl>
+                <Input
+                  type="text"
+                  {...field}
+                  value={field.value || ""}
+                />
+              </FormControl>
             </FormItem>
           )}
         />

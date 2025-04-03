@@ -6,6 +6,7 @@ import { Footer } from "@/components/footer";
 import { AnimatedElement } from "@/components/ui/animated-element";
 import { Button } from "@/components/ui/button";
 import { ArticleCard } from "@/components/article-card";
+import { DeleteArticleButton } from "@/components/delete-article-button";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { ProfileEditForm } from "@/components/profile-edit-form";
@@ -45,6 +46,29 @@ export default function UserProfile() {
 
     fetchUserData();
   }, [user, navigate]);
+
+  const handleArticleDeleted = () => {
+    // Refetch articles after deletion
+    if (user) {
+      setIsLoading(true);
+      supabase
+        .from('articles')
+        .select(`
+          *,
+          profiles:author_id (username, avatar_url, sector)
+        `)
+        .eq('author_id', user.id)
+        .order('created_at', { ascending: false })
+        .then(({ data, error }) => {
+          if (error) {
+            console.error("Erro ao buscar artigos:", error);
+          } else {
+            setUserArticles(data || []);
+          }
+          setIsLoading(false);
+        });
+    }
+  };
 
   if (!user) return null;
   
@@ -119,17 +143,24 @@ export default function UserProfile() {
             {userArticles.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {userArticles.map((article) => (
-                  <ArticleCard 
-                    key={article.id}
-                    id={article.id}
-                    title={article.title}
-                    excerpt={article.content.substring(0, 100) + '...'}
-                    category={article.category}
-                    imageUrl={article.image_url}
-                    date={new Date(article.created_at).toLocaleDateString('pt-BR')}
-                    authorName={article.profiles?.username || 'Você'}
-                    authorAvatar={article.profiles?.avatar_url || ''}
-                  />
+                  <div key={article.id} className="relative group">
+                    <ArticleCard 
+                      id={article.id}
+                      title={article.title}
+                      excerpt={article.content.substring(0, 100) + '...'}
+                      category={article.category}
+                      imageUrl={article.image_url}
+                      date={new Date(article.created_at).toLocaleDateString('pt-BR')}
+                      authorName={article.profiles?.username || 'Você'}
+                      authorAvatar={article.profiles?.avatar_url || ''}
+                    />
+                    <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <DeleteArticleButton 
+                        articleId={article.id}
+                        onDeleted={handleArticleDeleted}
+                      />
+                    </div>
+                  </div>
                 ))}
               </div>
             ) : (

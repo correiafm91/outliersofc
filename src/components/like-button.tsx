@@ -142,7 +142,7 @@ export function LikeButton({ articleId }: LikeButtonProps) {
       />
       <span>{likeCount}</span>
       
-      <style jsx>
+      <style>
         {`
           @keyframes heartbeat {
             0%, 100% { transform: scale(1); }

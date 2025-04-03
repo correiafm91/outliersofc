@@ -5,138 +5,137 @@ import { NavBar } from "@/components/nav-bar";
 import { Footer } from "@/components/footer";
 import { CommentSection } from "@/components/comment-section";
 import { LikeButton } from "@/components/like-button";
+import { BookmarkButton } from "@/components/bookmark-button";
+import { ShareButton } from "@/components/share-button";
+import { UserFollowButton } from "@/components/user-follow-button";
 import { AnimatedElement } from "@/components/ui/animated-element";
 import { AnimatedText } from "@/components/ui/animated-text";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
-// Dados simulados - seriam obtidos do Supabase
-const mockArticles = [
-  {
-    id: "1",
-    title: "O futuro dos investimentos em startups na América Latina",
-    content: `
-      <p>O ecossistema de startups latino-americano vem apresentando um crescimento exponencial nos últimos anos, atraindo a atenção de investidores globais. Em 2022, apesar do cenário econômico desafiador, o setor recebeu mais de $4 bilhões em investimentos de venture capital.</p>
-      
-      <p>De acordo com o relatório da Latam Ventures, o Brasil continua liderando a região, representando cerca de 50% de todos os investimentos. No entanto, países como México, Colômbia e Chile estão rapidamente desenvolvendo suas próprias cenas de inovação.</p>
-      
-      <h2>Setores em destaque</h2>
-      
-      <p>As fintechs ainda dominam o espaço, representando 30% dos investimentos totais. No entanto, estamos vendo um crescimento significativo em setores como:</p>
-      
-      <ul>
-        <li>Healthtechs (tecnologias para saúde)</li>
-        <li>Cleantechs (soluções para sustentabilidade)</li>
-        <li>Agtechs (tecnologia para o agronegócio)</li>
-      </ul>
-      
-      <p>O Brasil, com sua forte tradição agrícola, está se tornando um hub para inovações no agronegócio, enquanto o México lidera em soluções de mobilidade urbana e logística.</p>
-      
-      <h2>Desafios persistentes</h2>
-      
-      <p>Apesar do crescimento, desafios significativos permanecem:</p>
-      
-      <p>A instabilidade política e econômica em vários países da região continua criando incertezas para investidores. A infraestrutura digital, embora melhorando, ainda apresenta gargalos em áreas rurais e menores centros urbanos. A escassez de talentos técnicos qualificados está se tornando um problema crescente à medida que mais empresas competem por desenvolvedores e engenheiros.</p>
-      
-      <h2>O papel dos fundos internacionais</h2>
-      
-      <p>Fundos de venture capital dos EUA e Europa estão aumentando significativamente sua exposição à região. Empresas como SoftBank, Sequoia Capital e Accel têm feito investimentos consideráveis, muitas vezes liderando rodadas Series B e C.</p>
-      
-      <p>Interessantemente, estamos também observando um crescente interesse de fundos asiáticos, particularmente da China e Singapura, que enxergam similaridades entre os desafios enfrentados na América Latina e em seus mercados domésticos.</p>
-      
-      <h2>Perspectivas futuras</h2>
-      
-      <p>Para 2023-2024, especialistas preveem:</p>
-      
-      <p>Uma maior consolidação do setor, com empresas mais maduras adquirindo startups menores para expandir ofertas de produtos e alcance geográfico. Um foco crescente em rentabilidade em vez de crescimento a qualquer custo — uma mudança significativa em relação aos anos anteriores. Mais IPOs de empresas latino-americanas, seja em bolsas locais ou nos Estados Unidos.</p>
-      
-      <p>A América Latina, com uma população de mais de 650 milhões e uma crescente classe média, representa uma enorme oportunidade para startups que podem resolver problemas locais com soluções inovadoras. À medida que o ecossistema amadurece, podemos esperar ver mais unicórnios emergindo da região nos próximos anos.</p>
-    `,
-    category: "Negócios",
-    imageUrl: "https://images.unsplash.com/photo-1664575599736-c5197c684171?q=80&w=2070&auto=format&fit=crop",
-    date: "12 Mai 2023",
-    readTime: "8 min de leitura",
-    authorName: "Marcelo Santos",
-    authorAvatar: "https://randomuser.me/api/portraits/men/32.jpg",
-    authorBio: "Analista de investimentos com 15 anos de experiência no mercado latino-americano.",
-  },
-  {
-    id: "2",
-    title: "Análise: Como a inteligência artificial está transformando o setor financeiro",
-    content: `
-      <p>O setor financeiro está passando por uma revolução silenciosa, impulsionada pelos avanços em inteligência artificial. Bancos tradicionais e fintechs estão investindo bilhões em tecnologias de IA para automatizar processos, melhorar a experiência do cliente e, crucialmente, detectar fraudes e riscos com maior precisão.</p>
-      
-      <h2>Automação e eficiência operacional</h2>
-      
-      <p>A automação de processos robóticos (RPA) combinada com IA está permitindo que instituições financeiras processem volumosas transações com mínima intervenção humana. Tarefas como verificação de documentos, processamento de empréstimos e compliance regulatório estão sendo significativamente agilizadas.</p>
-      
-      <p>O Banco Itaú, por exemplo, implementou sistemas de IA que reduziram o tempo de processamento de certos empréstimos de dias para minutos, aumentando sua capacidade operacional e reduzindo custos.</p>
-      
-      <h2>Atendimento ao cliente reimaginado</h2>
-      
-      <p>Chatbots e assistentes virtuais estão na linha de frente da interação com clientes. Nubank, Mercado Pago e outros players digitais utilizam extensivamente essas tecnologias para oferecer suporte 24/7 e personalizar recomendações financeiras.</p>
-      
-      <p>Mais impressionante ainda é como a IA está sendo utilizada para antecipar necessidades dos clientes. Algoritmos avançados analisam padrões de gastos para oferecer produtos relevantes no momento certo – como seguro viagem quando detectam a compra de passagens aéreas.</p>
-      
-      <h2>Detecção de fraudes e gerenciamento de riscos</h2>
-      
-      <p>Talvez o uso mais impactante da IA no setor financeiro seja na segurança. Sistemas de aprendizado de máquina são capazes de analisar milhões de transações em tempo real, identificando padrões suspeitos que escapariam à análise humana.</p>
-      
-      <p>O Banco do Brasil reportou uma redução de 60% em fraudes de cartão de crédito após implementar um sistema avançado de IA para detecção de anomalias. Similarmente, fintechs como a Creditas utilizam IA para avaliar o risco de crédito de maneira mais precisa que os modelos tradicionais de scoring.</p>
-      
-      <h2>Desafios e considerações éticas</h2>
-      
-      <p>A implementação de IA no setor financeiro não está isenta de desafios. Preocupações com privacidade de dados, potencial viés algorítmico e a necessidade de transparência nas decisões automatizadas são questões que o setor precisa enfrentar.</p>
-      
-      <p>Reguladores como o Banco Central do Brasil estão desenvolvendo frameworks para supervisionar o uso de IA em serviços financeiros, buscando um equilíbrio entre inovação e proteção ao consumidor.</p>
-      
-      <h2>O futuro: IA generativa e além</h2>
-      
-      <p>O surgimento da IA generativa, exemplificada por modelos como GPT e DALL-E, abre novas possibilidades. Bancos estão explorando como esses sistemas podem criar conteúdo personalizado de educação financeira, gerar relatórios de investimentos adaptados ao perfil do cliente, e até desenvolver cenários de planejamento financeiro altamente customizados.</p>
-      
-      <p>No horizonte mais distante, tecnologias como computação quântica prometem elevar o potencial da IA financeira a patamares inimagináveis, com capacidade de modelar riscos complexos e otimizar portfólios em escala global.</p>
-      
-      <p>Para consumidores e investidores, essa revolução tecnológica significa serviços financeiros mais acessíveis, personalizados e seguros. Para profissionais do setor, representa uma transformação profunda que exigirá novas habilidades e adaptabilidade. O futuro do setor financeiro está sendo escrito com algoritmos, e quem melhor dominar essa linguagem liderará o mercado nas próximas décadas.</p>
-    `,
-    category: "Tecnologia",
-    imageUrl: "https://images.unsplash.com/photo-1639322537228-f710d846310a?q=80&w=2032&auto=format&fit=crop",
-    date: "10 Mai 2023",
-    readTime: "10 min de leitura",
-    authorName: "Fernanda Lima",
-    authorAvatar: "https://randomuser.me/api/portraits/women/44.jpg",
-    authorBio: "Especialista em tecnologia financeira e consultora para fintechs.",
-  },
-  // Outros artigos simulados aqui
-];
+interface ArticleData {
+  id: string;
+  title: string;
+  content: string;
+  category: string;
+  imageUrl: string;
+  date: string;
+  created_at: string;
+  author: {
+    id: string;
+    name: string;
+    avatar: string;
+    bio: string;
+    isVerified: boolean;
+  };
+  stats: {
+    likeCount: number;
+    commentCount: number;
+    shareCount: number;
+  };
+}
 
 export default function ArticleDetail() {
   const { id } = useParams();
-  const [article, setArticle] = useState<any>(null);
+  const [article, setArticle] = useState<ArticleData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentUrl, setCurrentUrl] = useState("");
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
-    // Verificar se o usuário está logado
-    const user = localStorage.getItem("user");
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
+    // Set current URL for sharing
+    setCurrentUrl(window.location.href);
 
-    // Simular busca de artigo por ID (seria do Supabase)
-    const foundArticle = mockArticles.find((a) => a.id === id);
-    
-    if (foundArticle) {
-      // Simular carregamento
-      setTimeout(() => {
-        setArticle(foundArticle);
+    // Fetch article data
+    const fetchArticle = async () => {
+      if (!id) return;
+      
+      setIsLoading(true);
+
+      try {
+        // Get article data
+        const { data: articleData, error: articleError } = await supabase
+          .from('articles')
+          .select(`
+            id, 
+            title, 
+            content, 
+            category, 
+            image_url, 
+            created_at,
+            profiles:author_id (
+              id, 
+              username, 
+              avatar_url, 
+              bio,
+              is_verified
+            )
+          `)
+          .eq('id', id)
+          .single();
+
+        if (articleError) throw articleError;
+
+        if (!articleData) {
+          navigate("/not-found");
+          return;
+        }
+
+        // Get like count
+        const { count: likeCount, error: likeError } = await supabase
+          .from('likes')
+          .select('*', { count: 'exact', head: true })
+          .eq('article_id', id);
+
+        if (likeError) throw likeError;
+
+        // Get comment count
+        const { count: commentCount, error: commentError } = await supabase
+          .from('comments')
+          .select('*', { count: 'exact', head: true })
+          .eq('article_id', id);
+
+        if (commentError) throw commentError;
+
+        // Format article data
+        const formattedArticle: ArticleData = {
+          id: articleData.id,
+          title: articleData.title,
+          content: articleData.content,
+          category: articleData.category,
+          imageUrl: articleData.image_url,
+          date: new Date(articleData.created_at).toLocaleDateString('pt-BR'),
+          created_at: articleData.created_at,
+          author: {
+            id: articleData.profiles.id,
+            name: articleData.profiles.username,
+            avatar: articleData.profiles.avatar_url,
+            bio: articleData.profiles.bio || "",
+            isVerified: articleData.profiles.is_verified || false
+          },
+          stats: {
+            likeCount: likeCount || 0,
+            commentCount: commentCount || 0,
+            shareCount: 0 // We don't track shares in the database yet
+          }
+        };
+
+        setArticle(formattedArticle);
+      } catch (error) {
+        console.error("Error fetching article:", error);
+        navigate("/not-found");
+      } finally {
         setIsLoading(false);
-      }, 800);
-    } else {
-      navigate("/not-found");
-    }
+      }
+    };
+
+    fetchArticle();
   }, [id, navigate]);
 
-  // Função para revelar elementos conforme o scroll
+  // Function to reveal elements conforme o scroll
   useEffect(() => {
     const handleScroll = () => {
       const reveals = document.querySelectorAll('.reveal');
@@ -179,8 +178,6 @@ export default function ArticleDetail() {
                   <span>{article.category}</span>
                   <span>•</span>
                   <span>{article.date}</span>
-                  <span>•</span>
-                  <span>{article.readTime}</span>
                 </div>
               </AnimatedElement>
               
@@ -192,21 +189,55 @@ export default function ArticleDetail() {
               
               <AnimatedElement className="animate-delay-200">
                 <div className="flex items-center space-x-3 mb-8">
-                  {article.authorAvatar ? (
-                    <img 
-                      src={article.authorAvatar} 
-                      alt={article.authorName} 
-                      className="w-12 h-12 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-300 text-lg font-medium">
-                      {article.authorName.charAt(0)}
-                    </div>
-                  )}
-                  <div>
-                    <div className="font-medium">{article.authorName}</div>
-                    <div className="text-zinc-400 text-sm">{article.authorBio}</div>
+                  <div className="relative">
+                    {article.author.avatar ? (
+                      <img 
+                        src={article.author.avatar} 
+                        alt={article.author.name} 
+                        className="w-12 h-12 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-300 text-lg font-medium">
+                        {article.author.name.charAt(0)}
+                      </div>
+                    )}
+                    {article.author.isVerified && (
+                      <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    )}
                   </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{article.author.name}</span>
+                      {article.author.isVerified && (
+                        <Badge variant="outline" className="text-xs font-normal py-0 px-1 h-5 border-white/20">
+                          Verificado
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="text-zinc-400 text-sm">
+                      {article.author.bio || "Autor"}
+                    </div>
+                  </div>
+                  
+                  <UserFollowButton 
+                    userId={article.author.id} 
+                    username={article.author.name} 
+                  />
+                </div>
+              </AnimatedElement>
+
+              <AnimatedElement className="flex flex-wrap items-center gap-2 mb-8 text-sm">
+                <div className="flex items-center text-zinc-400">
+                  <span className="mr-5">
+                    <span className="font-medium text-white">{article.stats.likeCount}</span> curtidas
+                  </span>
+                  <span className="mr-5">
+                    <span className="font-medium text-white">{article.stats.commentCount}</span> comentários
+                  </span>
                 </div>
               </AnimatedElement>
             </div>
@@ -235,19 +266,31 @@ export default function ArticleDetail() {
                 <aside className="hidden lg:block col-span-1">
                   <div className="sticky top-32 flex flex-col space-y-4 items-center">
                     <LikeButton articleId={article.id} />
+                    <BookmarkButton articleId={article.id} variant="icon" />
+                    <ShareButton 
+                      articleTitle={article.title}
+                      articleUrl={currentUrl}
+                      variant="icon"
+                    />
                   </div>
                 </aside>
                 
                 {/* Main content */}
                 <article className="col-span-12 lg:col-span-8 space-y-6 text-lg leading-relaxed">
                   <div 
-                    className="article-content space-y-6" 
+                    className="article-content prose prose-invert prose-zinc max-w-none" 
                     dangerouslySetInnerHTML={{ __html: article.content }}
                   />
                   
                   {/* Mobile social bar */}
-                  <div className="lg:hidden flex justify-center my-8">
+                  <div className="lg:hidden flex justify-center items-center gap-4 my-8">
                     <LikeButton articleId={article.id} />
+                    <BookmarkButton articleId={article.id} variant="button" />
+                    <ShareButton 
+                      articleTitle={article.title}
+                      articleUrl={currentUrl}
+                      variant="button"
+                    />
                   </div>
                   
                   <Separator className="my-8 bg-zinc-800" />
@@ -266,31 +309,10 @@ export default function ArticleDetail() {
                   <div className="sticky top-32 space-y-8">
                     <div className="bg-zinc-900 rounded-lg border border-zinc-800 p-6">
                       <h3 className="text-xl font-bold mb-4">Artigos relacionados</h3>
-                      <ul className="space-y-4">
-                        {mockArticles
-                          .filter((a) => a.id !== article.id)
-                          .slice(0, 3)
-                          .map((relatedArticle) => (
-                            <li key={relatedArticle.id} className="group">
-                              <a 
-                                href={`/article/${relatedArticle.id}`} 
-                                className="flex gap-3 items-start"
-                              >
-                                <img 
-                                  src={relatedArticle.imageUrl} 
-                                  alt={relatedArticle.title} 
-                                  className="w-16 h-16 object-cover rounded-md flex-shrink-0"
-                                />
-                                <div>
-                                  <h4 className="font-medium group-hover:text-white transition-colors">
-                                    {relatedArticle.title}
-                                  </h4>
-                                  <p className="text-xs text-zinc-400">{relatedArticle.date}</p>
-                                </div>
-                              </a>
-                            </li>
-                          ))}
-                      </ul>
+                      <RelatedArticles 
+                        category={article.category} 
+                        currentArticleId={article.id}
+                      />
                     </div>
                   </div>
                 </aside>
@@ -302,5 +324,87 @@ export default function ArticleDetail() {
 
       <Footer />
     </main>
+  );
+}
+
+// Related articles component
+function RelatedArticles({ category, currentArticleId }: { category: string, currentArticleId: string }) {
+  const [articles, setArticles] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  useEffect(() => {
+    const fetchRelatedArticles = async () => {
+      setIsLoading(true);
+      
+      const { data, error } = await supabase
+        .from('articles')
+        .select(`
+          id,
+          title,
+          image_url,
+          created_at
+        `)
+        .eq('category', category)
+        .neq('id', currentArticleId)
+        .order('created_at', { ascending: false })
+        .limit(3);
+        
+      if (error) {
+        console.error("Error fetching related articles:", error);
+      } else {
+        setArticles(data || []);
+      }
+      
+      setIsLoading(false);
+    };
+    
+    fetchRelatedArticles();
+  }, [category, currentArticleId]);
+  
+  if (isLoading) {
+    return (
+      <div className="space-y-4 animate-pulse">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="flex gap-3 items-start">
+            <div className="w-16 h-16 bg-zinc-800 rounded-md flex-shrink-0"></div>
+            <div className="space-y-2 flex-1">
+              <div className="h-4 bg-zinc-800 rounded w-full"></div>
+              <div className="h-3 bg-zinc-800 rounded w-1/3"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  
+  if (articles.length === 0) {
+    return <p className="text-zinc-500 text-sm">Nenhum artigo relacionado encontrado.</p>;
+  }
+  
+  return (
+    <ul className="space-y-4">
+      {articles.map((article) => (
+        <li key={article.id} className="group">
+          <a 
+            href={`/article/${article.id}`} 
+            className="flex gap-3 items-start"
+          >
+            <img 
+              src={article.image_url} 
+              alt={article.title} 
+              className="w-16 h-16 object-cover rounded-md flex-shrink-0"
+            />
+            <div>
+              <h4 className="font-medium group-hover:text-white transition-colors line-clamp-2">
+                {article.title}
+              </h4>
+              <p className="text-xs text-zinc-400">
+                {new Date(article.created_at).toLocaleDateString('pt-BR')}
+              </p>
+            </div>
+          </a>
+        </li>
+      ))}
+    </ul>
   );
 }
