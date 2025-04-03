@@ -49,6 +49,42 @@ export default function CreateArticle() {
     }
   };
 
+  const ensureBucketExists = async (bucketName: string): Promise<boolean> => {
+    // First check if the bucket exists
+    const { data: buckets } = await supabase.storage.listBuckets();
+    
+    const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
+    
+    if (!bucketExists) {
+      // Create the bucket if it doesn't exist
+      try {
+        const { error } = await supabase.storage.createBucket(bucketName, { 
+          public: true 
+        });
+          
+        if (error) {
+          console.error("Erro ao criar bucket:", error);
+          toast({
+            title: "Erro de armazenamento",
+            description: "Não foi possível criar o bucket de armazenamento.",
+            variant: "destructive",
+          });
+          return false;
+        }
+      } catch (error) {
+        console.error("Erro ao criar bucket:", error);
+        toast({
+          title: "Erro de armazenamento",
+          description: "O sistema de armazenamento não está configurado corretamente.",
+          variant: "destructive",
+        });
+        return false;
+      }
+    }
+    
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -64,14 +100,24 @@ export default function CreateArticle() {
     setIsSubmitting(true);
 
     try {
+      // Ensure the images bucket exists
+      const bucketExists = await ensureBucketExists('images');
+      if (!bucketExists) {
+        setIsSubmitting(false);
+        return;
+      }
+
       // Upload da imagem para o bucket 'images'
       const fileExt = image.name.split('.').pop();
       const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-      const filePath = `article-images/${fileName}`;
+      const filePath = `${fileName}`; // Simplified path without subfolder
 
       const { error: uploadError, data: uploadData } = await supabase.storage
         .from('images')
-        .upload(filePath, image);
+        .upload(filePath, image, {
+          cacheControl: '3600',
+          upsert: true
+        });
 
       if (uploadError) {
         console.error('Erro no upload da imagem:', uploadError);

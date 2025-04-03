@@ -107,56 +107,77 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
     setAvatarFile(file);
   };
 
-  const uploadAvatar = async (): Promise<string | null> => {
-    if (!avatarFile || !user) return null;
-
+  const ensureBucketExists = async (bucketName: string): Promise<boolean> => {
     // First check if the bucket exists
-    const { data: buckets } = await supabase
-      .storage
-      .listBuckets();
+    const { data: buckets } = await supabase.storage.listBuckets();
     
-    const userAvatarsBucketExists = buckets?.some(bucket => bucket.name === 'user-avatars');
+    const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
     
-    if (!userAvatarsBucketExists) {
+    if (!bucketExists) {
       // Create the bucket if it doesn't exist
       try {
-        const { error } = await supabase
-          .storage
-          .createBucket('user-avatars', { public: true });
+        const { error } = await supabase.storage.createBucket(bucketName, { 
+          public: true 
+        });
           
         if (error) {
+          console.error("Erro ao criar bucket:", error);
           toast({
             title: "Erro de armazenamento",
-            description: "Não foi possível criar o bucket de armazenamento. Entre em contato com o suporte.",
+            description: "Não foi possível criar o bucket de armazenamento.",
             variant: "destructive",
           });
-          return null;
+          return false;
         }
       } catch (error) {
         console.error("Erro ao criar bucket:", error);
         toast({
           title: "Erro de armazenamento",
-          description: "O sistema de armazenamento não está configurado corretamente. Entre em contato com o suporte.",
+          description: "O sistema de armazenamento não está configurado corretamente.",
           variant: "destructive",
         });
-        return null;
+        return false;
       }
     }
+    
+    return true;
+  };
+
+  const uploadAvatar = async (): Promise<string | null> => {
+    if (!avatarFile || !user) return null;
+
+    // Ensure the bucket exists
+    const bucketExists = await ensureBucketExists('user-avatars');
+    if (!bucketExists) return null;
 
     try {
       // Create a unique file path
       const fileExt = avatarFile.name.split('.').pop();
       const fileName = `${user.id}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
+      const filePath = `${fileName}`;  // Simplified path without subfolder
 
+      // Remove old avatar if exists
+      if (profileData?.avatar_url) {
+        const oldFileName = profileData.avatar_url.split('/').pop();
+        if (oldFileName) {
+          await supabase.storage
+            .from('user-avatars')
+            .remove([oldFileName]);
+        }
+      }
+
+      // Upload new avatar
       const { error: uploadError } = await supabase.storage
         .from('user-avatars')
         .upload(filePath, avatarFile, {
           cacheControl: '3600',
-          upsert: false,
+          upsert: true, // Changed to true to overwrite if needed
         });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Erro de upload:', uploadError);
+        throw uploadError;
+      }
 
       // Get the public URL
       const { data } = supabase.storage
@@ -168,7 +189,7 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
       console.error('Erro ao fazer upload da imagem:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível fazer o upload da imagem.",
+        description: "Não foi possível fazer o upload da imagem. Verifique o formato e tamanho.",
         variant: "destructive",
       });
       return null;
