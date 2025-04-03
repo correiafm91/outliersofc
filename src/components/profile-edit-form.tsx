@@ -5,7 +5,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,7 +37,6 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
   const [profileData, setProfileData] = useState<ProfileFormValues | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -120,12 +118,29 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
     const userAvatarsBucketExists = buckets?.some(bucket => bucket.name === 'user-avatars');
     
     if (!userAvatarsBucketExists) {
-      toast({
-        title: "Erro de armazenamento",
-        description: "O sistema de armazenamento não está configurado corretamente. Entre em contato com o suporte.",
-        variant: "destructive",
-      });
-      return null;
+      // Create the bucket if it doesn't exist
+      try {
+        const { error } = await supabase
+          .storage
+          .createBucket('user-avatars', { public: true });
+          
+        if (error) {
+          toast({
+            title: "Erro de armazenamento",
+            description: "Não foi possível criar o bucket de armazenamento. Entre em contato com o suporte.",
+            variant: "destructive",
+          });
+          return null;
+        }
+      } catch (error) {
+        console.error("Erro ao criar bucket:", error);
+        toast({
+          title: "Erro de armazenamento",
+          description: "O sistema de armazenamento não está configurado corretamente. Entre em contato com o suporte.",
+          variant: "destructive",
+        });
+        return null;
+      }
     }
 
     try {
@@ -165,6 +180,29 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
 
     setIsLoading(true);
     try {
+      // Check if the username already exists (but not for this user)
+      if (values.username !== profileData?.username) {
+        const { data: existingUser, error: checkError } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("username", values.username)
+          .neq("id", user.id)
+          .maybeSingle();
+
+        if (checkError) {
+          console.error("Erro ao verificar nome de usuário:", checkError);
+        }
+
+        if (existingUser) {
+          form.setError("username", { 
+            type: "manual", 
+            message: "Este nome de usuário já está em uso. Por favor, escolha outro." 
+          });
+          setIsLoading(false);
+          return;
+        }
+      }
+
       // Upload avatar if a new one was selected
       let avatarUrl = values.avatar_url;
       if (avatarFile) {
@@ -183,7 +221,17 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
         })
         .eq("id", user.id);
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === '23505' && error.message.includes('profiles_username_key')) {
+          form.setError("username", { 
+            type: "manual", 
+            message: "Este nome de usuário já está em uso. Por favor, escolha outro." 
+          });
+          throw new Error("Nome de usuário já em uso");
+        } else {
+          throw error;
+        }
+      }
 
       toast({
         title: "Perfil atualizado",
@@ -191,13 +239,18 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
       });
       
       onSuccess();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao atualizar perfil:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível atualizar seu perfil.",
-        variant: "destructive",
-      });
+      
+      // Only show general error if it's not a username duplicate error
+      // (which was already handled with the specific field error)
+      if (!error.message || error.message !== "Nome de usuário já em uso") {
+        toast({
+          title: "Erro",
+          description: "Não foi possível atualizar seu perfil.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(false);
     }

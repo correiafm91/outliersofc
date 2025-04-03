@@ -34,7 +34,7 @@ export function NavBar() {
           .from('profiles')
           .select('username, avatar_url, sector')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
           
         if (error) {
           console.error("Error fetching user profile:", error);

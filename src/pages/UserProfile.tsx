@@ -14,6 +14,7 @@ import { useToast } from "@/components/ui/use-toast";
 
 export default function UserProfile() {
   const [userArticles, setUserArticles] = useState([]);
+  const [userProfile, setUserProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const { user } = useAuth();
@@ -28,7 +29,25 @@ export default function UserProfile() {
 
     const fetchUserData = async () => {
       try {
-        // Buscar artigos do usuário
+        // Fetch user profile
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('username, avatar_url, sector')
+          .eq('id', user.id)
+          .maybeSingle();
+          
+        if (profileError) {
+          console.error("Erro ao buscar perfil:", profileError);
+          toast({
+            title: "Erro",
+            description: "Não foi possível carregar seus dados de perfil.",
+            variant: "destructive",
+          });
+        } else {
+          setUserProfile(profile);
+        }
+        
+        // Fetch user articles
         const { data: articles, error } = await supabase
           .from('articles')
           .select(`
@@ -89,6 +108,32 @@ export default function UserProfile() {
       }
     }
   };
+  
+  const handleEditSuccess = () => {
+    setIsEditing(false);
+    // Refresh user profile data
+    if (user) {
+      try {
+        const fetchProfile = async () => {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('username, avatar_url, sector')
+            .eq('id', user.id)
+            .maybeSingle();
+            
+          if (error) {
+            console.error("Erro ao atualizar perfil na tela:", error);
+          } else {
+            setUserProfile(data);
+          }
+        };
+        
+        fetchProfile();
+      } catch (err) {
+        console.error("Exceção ao atualizar perfil na tela:", err);
+      }
+    }
+  };
 
   if (!user) return null;
   
@@ -121,23 +166,36 @@ export default function UserProfile() {
                 </h1>
                 <ProfileEditForm 
                   onCancel={() => setIsEditing(false)} 
-                  onSuccess={() => setIsEditing(false)}
+                  onSuccess={handleEditSuccess}
                 />
               </div>
             ) : (
               <div className="mb-12 flex flex-col md:flex-row items-center md:items-start gap-6">
-                <div className="w-24 h-24 rounded-full bg-zinc-800 flex items-center justify-center text-4xl">
-                  {user?.email?.charAt(0).toUpperCase() || "U"}
+                <div className="w-24 h-24 rounded-full bg-zinc-800 overflow-hidden flex items-center justify-center text-4xl">
+                  {userProfile?.avatar_url ? (
+                    <img 
+                      src={userProfile.avatar_url} 
+                      alt="Avatar do usuário" 
+                      className="w-full h-full object-cover" 
+                    />
+                  ) : (
+                    user?.email?.charAt(0).toUpperCase() || "U"
+                  )}
                 </div>
                 
                 <div className="text-center md:text-left">
                   <h1 className="text-3xl font-bold mb-2">
-                    {user?.email?.split('@')[0] || "Usuário"}
+                    {userProfile?.username || user?.email?.split('@')[0] || "Usuário"}
                   </h1>
-                  <p className="text-zinc-400 mb-4">
+                  <p className="text-zinc-400 mb-1">
                     {user?.email || ""}
                   </p>
-                  <div className="flex flex-wrap justify-center md:justify-start gap-2">
+                  {userProfile?.sector && (
+                    <p className="text-zinc-300 mb-4">
+                      {userProfile.sector}
+                    </p>
+                  )}
+                  <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-4">
                     <Button 
                       onClick={() => navigate("/criar-artigo")} 
                       className="bg-white text-black hover:bg-zinc-200"
