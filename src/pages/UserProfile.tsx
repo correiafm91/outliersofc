@@ -10,6 +10,7 @@ import { DeleteArticleButton } from "@/components/delete-article-button";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { ProfileEditForm } from "@/components/profile-edit-form";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function UserProfile() {
   const [userArticles, setUserArticles] = useState([]);
@@ -17,6 +18,7 @@ export default function UserProfile() {
   const [isEditing, setIsEditing] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!user) {
@@ -25,48 +27,66 @@ export default function UserProfile() {
     }
 
     const fetchUserData = async () => {
-      // Buscar artigos do usuário
-      const { data: articles, error } = await supabase
-        .from('articles')
-        .select(`
-          *,
-          profiles:author_id (username, avatar_url, sector)
-        `)
-        .eq('author_id', user.id)
-        .order('created_at', { ascending: false });
-      
-      if (error) {
-        console.error("Erro ao buscar artigos:", error);
-      } else {
-        setUserArticles(articles || []);
+      try {
+        // Buscar artigos do usuário
+        const { data: articles, error } = await supabase
+          .from('articles')
+          .select(`
+            *,
+            profiles:author_id (username, avatar_url, sector)
+          `)
+          .eq('author_id', user.id)
+          .order('created_at', { ascending: false });
+        
+        if (error) {
+          console.error("Erro ao buscar artigos:", error);
+          toast({
+            title: "Erro",
+            description: "Não foi possível carregar seus artigos.",
+            variant: "destructive",
+          });
+        } else {
+          setUserArticles(articles || []);
+        }
+      } catch (err) {
+        console.error("Exceção ao buscar dados do usuário:", err);
+      } finally {
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
     };
 
     fetchUserData();
-  }, [user, navigate]);
+  }, [user, navigate, toast]);
 
-  const handleArticleDeleted = () => {
+  const handleArticleDeleted = async () => {
     // Refetch articles after deletion
     if (user) {
       setIsLoading(true);
-      supabase
-        .from('articles')
-        .select(`
-          *,
-          profiles:author_id (username, avatar_url, sector)
-        `)
-        .eq('author_id', user.id)
-        .order('created_at', { ascending: false })
-        .then(({ data, error }) => {
-          if (error) {
-            console.error("Erro ao buscar artigos:", error);
-          } else {
-            setUserArticles(data || []);
-          }
-          setIsLoading(false);
-        });
+      try {
+        const { data, error } = await supabase
+          .from('articles')
+          .select(`
+            *,
+            profiles:author_id (username, avatar_url, sector)
+          `)
+          .eq('author_id', user.id)
+          .order('created_at', { ascending: false });
+          
+        if (error) {
+          console.error("Erro ao buscar artigos:", error);
+          toast({
+            title: "Erro",
+            description: "Não foi possível atualizar a lista de artigos.",
+            variant: "destructive",
+          });
+        } else {
+          setUserArticles(data || []);
+        }
+      } catch (err) {
+        console.error("Exceção ao buscar artigos atualizados:", err);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 

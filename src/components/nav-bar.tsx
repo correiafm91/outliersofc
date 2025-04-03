@@ -29,16 +29,20 @@ export function NavBar() {
     if (!user) return;
     
     const fetchUserProfile = async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('username, avatar_url, is_verified')
-        .eq('id', user.id)
-        .single();
-        
-      if (error) {
-        console.error("Error fetching user profile:", error);
-      } else {
-        setUserProfile(data);
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('username, avatar_url, sector')
+          .eq('id', user.id)
+          .single();
+          
+        if (error) {
+          console.error("Error fetching user profile:", error);
+        } else {
+          setUserProfile(data);
+        }
+      } catch (err) {
+        console.error("Exception when fetching profile:", err);
       }
     };
     
@@ -88,13 +92,6 @@ export function NavBar() {
                           {userProfile?.username?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      {userProfile?.is_verified && (
-                        <div className="absolute -bottom-0.5 -right-0.5 bg-white rounded-full p-0.5">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-2 w-2 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
-                        </div>
-                      )}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="min-w-[200px] bg-zinc-900 border-zinc-800">

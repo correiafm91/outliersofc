@@ -23,7 +23,6 @@ const profileFormSchema = z.object({
     message: "Nome de usuário deve ter pelo menos 2 caracteres.",
   }),
   sector: z.string().optional(),
-  bio: z.string().optional(),
   avatar_url: z.string().optional(),
 });
 
@@ -48,7 +47,6 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
     defaultValues: {
       username: "",
       sector: "",
-      bio: "",
       avatar_url: "",
     },
   });
@@ -58,31 +56,39 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
       if (!user) return;
 
       setIsLoading(true);
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("username, sector, bio, avatar_url")
-        .eq("id", user.id)
-        .single();
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("username, sector, avatar_url")
+          .eq("id", user.id)
+          .single();
 
-      if (error) {
-        console.error("Erro ao buscar perfil:", error);
+        if (error) {
+          console.error("Erro ao buscar perfil:", error);
+          toast({
+            title: "Erro",
+            description: "Não foi possível carregar seus dados de perfil.",
+            variant: "destructive",
+          });
+        } else if (data) {
+          setProfileData(data);
+          form.reset({
+            username: data.username || user.email?.split('@')[0] || "",
+            sector: data.sector || "",
+            avatar_url: data.avatar_url || "",
+          });
+
+          if (data.avatar_url) {
+            setAvatarPreview(data.avatar_url);
+          }
+        }
+      } catch (err) {
+        console.error("Exceção ao buscar perfil:", err);
         toast({
           title: "Erro",
-          description: "Não foi possível carregar seus dados de perfil.",
+          description: "Ocorreu um erro ao buscar seus dados. Tente novamente.",
           variant: "destructive",
         });
-      } else if (data) {
-        setProfileData(data);
-        form.reset({
-          username: data.username || user.email?.split('@')[0] || "",
-          sector: data.sector || "",
-          bio: data.bio || "",
-          avatar_url: data.avatar_url || "",
-        });
-
-        if (data.avatar_url) {
-          setAvatarPreview(data.avatar_url);
-        }
       }
       setIsLoading(false);
     };
@@ -105,6 +111,22 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
 
   const uploadAvatar = async (): Promise<string | null> => {
     if (!avatarFile || !user) return null;
+
+    // First check if the bucket exists
+    const { data: buckets } = await supabase
+      .storage
+      .listBuckets();
+    
+    const userAvatarsBucketExists = buckets?.some(bucket => bucket.name === 'user-avatars');
+    
+    if (!userAvatarsBucketExists) {
+      toast({
+        title: "Erro de armazenamento",
+        description: "O sistema de armazenamento não está configurado corretamente. Entre em contato com o suporte.",
+        variant: "destructive",
+      });
+      return null;
+    }
 
     try {
       // Create a unique file path
@@ -152,17 +174,12 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
         }
       }
 
-      // Check if username is "Outliers Ofc" to set verified status
-      const isVerified = values.username === "Outliers Ofc";
-
       const { error } = await supabase
         .from("profiles")
         .update({
           username: values.username,
           sector: values.sector,
-          bio: values.bio,
-          avatar_url: avatarUrl,
-          is_verified: isVerified
+          avatar_url: avatarUrl
         })
         .eq("id", user.id);
 
@@ -257,25 +274,6 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
                 <Input
                   placeholder="Ex: Finanças, Tecnologia, Marketing..."
                   className="bg-zinc-900 border-zinc-700"
-                  {...field}
-                  value={field.value || ""}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="bio"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Biografia</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="Conte um pouco sobre você..."
-                  className="bg-zinc-900 border-zinc-700 min-h-[100px]"
                   {...field}
                   value={field.value || ""}
                 />
