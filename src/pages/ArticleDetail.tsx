@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { NavBar } from "@/components/nav-bar";
@@ -69,9 +68,8 @@ export default function ArticleDetail() {
             profiles:author_id (
               id, 
               username, 
-              avatar_url, 
-              bio,
-              is_verified
+              avatar_url,
+              sector
             )
           `)
           .eq('id', id)
@@ -113,8 +111,8 @@ export default function ArticleDetail() {
             id: articleData.profiles.id,
             name: articleData.profiles.username,
             avatar: articleData.profiles.avatar_url,
-            bio: articleData.profiles.bio || "",
-            isVerified: articleData.profiles.is_verified || false
+            bio: articleData.profiles.sector || "",
+            isVerified: false // We don't have this field, so default to false
           },
           stats: {
             likeCount: likeCount || 0,

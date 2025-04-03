@@ -1,6 +1,5 @@
-
 import { useCallback, useEffect, useState, useRef } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { NavBar } from "@/components/nav-bar";
 import { Footer } from "@/components/footer";
 import { ArticleCard } from "@/components/article-card";
@@ -25,14 +24,12 @@ export default function Index() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
 
-  // Load articles function
   const loadArticles = useCallback(async (reset = false) => {
     if (isLoading && !reset) return;
     
     const currentPage = reset ? 0 : page;
     setIsLoading(true);
 
-    // Calculate pagination range
     const from = currentPage * articlesPerPage;
     const to = from + articlesPerPage - 1;
 
@@ -41,12 +38,11 @@ export default function Index() {
         .from('articles')
         .select(`
           *,
-          profiles:author_id (username, avatar_url, sector, is_verified)
+          profiles:author_id (username, avatar_url, sector)
         `)
         .order('created_at', { ascending: false })
         .range(from, to);
         
-      // Add search filter if there's a search term
       if (searchTerm) {
         query = query.or(`title.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`);
       }
@@ -76,12 +72,10 @@ export default function Index() {
     }
   }, [page, articlesPerPage, searchTerm, isLoading]);
 
-  // Initial load
   useEffect(() => {
     loadArticles(true);
   }, []);
 
-  // Set up intersection observer for infinite scroll
   useEffect(() => {
     if (observer.current) {
       observer.current.disconnect();
@@ -104,14 +98,12 @@ export default function Index() {
     };
   }, [hasMore, isLoading, loadArticles]);
 
-  // Handle search
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSearching(true);
     loadArticles(true);
   };
 
-  // Clear search
   const clearSearch = () => {
     setSearchTerm("");
     setIsSearching(true);
@@ -129,15 +121,12 @@ export default function Index() {
     );
   }
 
-  // Dividir artigos para o layout
   const featuredArticle = articles[0] || null;
   const regularArticles = articles.slice(1);
 
   return (
     <main className="min-h-screen bg-black text-white">
       <NavBar />
-
-      {/* Hero Section */}
       <section className="relative h-[80vh] min-h-[600px] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
           <img 
@@ -147,7 +136,6 @@ export default function Index() {
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/60 to-black"></div>
         </div>
-        
         <div className="container mx-auto px-4 relative z-10">
           <AnimatedElement className="text-center max-w-3xl mx-auto">
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
@@ -162,8 +150,6 @@ export default function Index() {
           </AnimatedElement>
         </div>
       </section>
-
-      {/* Search Section */}
       <section className="py-8 border-b border-zinc-800">
         <div className="container mx-auto px-4">
           <form onSubmit={handleSearch} className="flex gap-2 max-w-xl mx-auto">
@@ -193,8 +179,6 @@ export default function Index() {
           </form>
         </div>
       </section>
-
-      {/* Articles Section */}
       <section id="articles" className="py-20">
         <div className="container mx-auto px-4">
           <AnimatedElement>
@@ -202,7 +186,6 @@ export default function Index() {
               {searchTerm ? `Resultados para "${searchTerm}"` : "Artigos em destaque"}
             </h2>
           </AnimatedElement>
-          
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {isLoading && articles.length === 0 ? (
               <div className="col-span-full flex justify-center py-20">
@@ -227,7 +210,6 @@ export default function Index() {
                     className="mb-8 col-span-full" 
                   />
                 )}
-                
                 {regularArticles.map((article) => (
                   <ArticleCard 
                     key={article.id}
@@ -268,8 +250,6 @@ export default function Index() {
               </div>
             )}
           </div>
-          
-          {/* Infinite scroll loading indicator */}
           {hasMore && articles.length > 0 && (
             <div 
               ref={loadMoreRef} 
@@ -283,7 +263,6 @@ export default function Index() {
               )}
             </div>
           )}
-          
           {articles.length > 0 && (
             <div className="mt-8 text-center">
               <Button 
@@ -296,7 +275,6 @@ export default function Index() {
           )}
         </div>
       </section>
-
       <Footer />
     </main>
   );
