@@ -3,8 +3,10 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { Instagram, Linkedin, Facebook, Youtube } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,7 +24,13 @@ const profileFormSchema = z.object({
     message: "Nome de usuário deve ter pelo menos 2 caracteres.",
   }),
   sector: z.string().optional(),
+  bio: z.string().optional(),
   avatar_url: z.string().optional(),
+  banner_url: z.string().optional(),
+  instagram_url: z.string().optional(),
+  linkedin_url: z.string().optional(),
+  facebook_url: z.string().optional(),
+  youtube_url: z.string().optional(),
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
@@ -36,7 +44,9 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [profileData, setProfileData] = useState<ProfileFormValues | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -45,7 +55,13 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
     defaultValues: {
       username: "",
       sector: "",
+      bio: "",
       avatar_url: "",
+      banner_url: "",
+      instagram_url: "",
+      linkedin_url: "",
+      facebook_url: "",
+      youtube_url: "",
     },
   });
 
@@ -57,7 +73,7 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
       try {
         const { data, error } = await supabase
           .from("profiles")
-          .select("username, sector, avatar_url")
+          .select("username, sector, bio, avatar_url, banner_url, instagram_url, linkedin_url, facebook_url, youtube_url")
           .eq("id", user.id)
           .single();
 
@@ -73,11 +89,21 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
           form.reset({
             username: data.username || user.email?.split('@')[0] || "",
             sector: data.sector || "",
+            bio: data.bio || "",
             avatar_url: data.avatar_url || "",
+            banner_url: data.banner_url || "",
+            instagram_url: data.instagram_url || "",
+            linkedin_url: data.linkedin_url || "",
+            facebook_url: data.facebook_url || "",
+            youtube_url: data.youtube_url || "",
           });
 
           if (data.avatar_url) {
             setAvatarPreview(data.avatar_url);
+          }
+          
+          if (data.banner_url) {
+            setBannerPreview(data.banner_url);
           }
         }
       } catch (err) {
@@ -94,28 +120,40 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
     fetchProfile();
   }, [user, form, toast]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'avatar' | 'banner') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     // Preview the selected image
     const reader = new FileReader();
     reader.onload = (event) => {
-      setAvatarPreview(event.target?.result as string);
+      const result = event.target?.result as string;
+      
+      if (type === 'avatar') {
+        setAvatarPreview(result);
+        setAvatarFile(file);
+      } else {
+        setBannerPreview(result);
+        setBannerFile(file);
+      }
     };
     reader.readAsDataURL(file);
-    setAvatarFile(file);
   };
 
   const ensureBucketExists = async (bucketName: string): Promise<boolean> => {
-    // First check if the bucket exists
-    const { data: buckets } = await supabase.storage.listBuckets();
-    
-    const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
-    
-    if (!bucketExists) {
-      // Create the bucket if it doesn't exist
-      try {
+    try {
+      // First check if the bucket exists
+      const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+      
+      if (listError) {
+        console.error("Error checking buckets:", listError);
+        return false;
+      }
+      
+      const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
+      
+      if (!bucketExists) {
+        // Create the bucket if it doesn't exist
         const { error } = await supabase.storage.createBucket(bucketName, { 
           public: true 
         });
@@ -129,70 +167,53 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
           });
           return false;
         }
-      } catch (error) {
-        console.error("Erro ao criar bucket:", error);
-        toast({
-          title: "Erro de armazenamento",
-          description: "O sistema de armazenamento não está configurado corretamente.",
-          variant: "destructive",
-        });
-        return false;
       }
+      
+      return true;
+    } catch (error) {
+      console.error("Erro ao verificar/criar bucket:", error);
+      return false;
     }
-    
-    return true;
   };
 
-  const uploadAvatar = async (): Promise<string | null> => {
-    if (!avatarFile || !user) return null;
+  const uploadFile = async (file: File | null, bucketName: string, oldUrl: string | null | undefined): Promise<string | null> => {
+    if (!file || !user) return oldUrl || null;
 
     // Ensure the bucket exists
-    const bucketExists = await ensureBucketExists('user-avatars');
-    if (!bucketExists) return null;
+    const bucketExists = await ensureBucketExists(bucketName);
+    if (!bucketExists) return oldUrl || null;
 
     try {
       // Create a unique file path
-      const fileExt = avatarFile.name.split('.').pop();
+      const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-      const filePath = `${fileName}`;  // Simplified path without subfolder
 
-      // Remove old avatar if exists
-      if (profileData?.avatar_url) {
-        const oldFileName = profileData.avatar_url.split('/').pop();
-        if (oldFileName) {
-          await supabase.storage
-            .from('user-avatars')
-            .remove([oldFileName]);
-        }
-      }
-
-      // Upload new avatar
-      const { error: uploadError } = await supabase.storage
-        .from('user-avatars')
-        .upload(filePath, avatarFile, {
+      // Upload the file
+      const { data, error: uploadError } = await supabase.storage
+        .from(bucketName)
+        .upload(fileName, file, {
           cacheControl: '3600',
-          upsert: true, // Changed to true to overwrite if needed
+          upsert: true,
         });
 
       if (uploadError) {
-        console.error('Erro de upload:', uploadError);
         throw uploadError;
       }
 
       // Get the public URL
-      const { data } = supabase.storage
-        .from('user-avatars')
-        .getPublicUrl(filePath);
+      const { data: urlData } = supabase.storage
+        .from(bucketName)
+        .getPublicUrl(fileName);
 
-      return data.publicUrl;
+      return urlData.publicUrl;
     } catch (error) {
-      console.error('Erro ao fazer upload da imagem:', error);
+      console.error(`Erro ao fazer upload para ${bucketName}:`, error);
       toast({
         title: "Erro",
-        description: "Não foi possível fazer o upload da imagem. Verifique o formato e tamanho.",
+        description: `Não foi possível fazer o upload da imagem para ${bucketName}. Verifique o formato e tamanho.`,
         variant: "destructive",
       });
-      return null;
+      return oldUrl || null;
     }
   };
 
@@ -224,21 +245,23 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
         }
       }
 
-      // Upload avatar if a new one was selected
-      let avatarUrl = values.avatar_url;
-      if (avatarFile) {
-        const uploadedUrl = await uploadAvatar();
-        if (uploadedUrl) {
-          avatarUrl = uploadedUrl;
-        }
-      }
+      // Upload avatar and banner if selected
+      const avatarUrl = await uploadFile(avatarFile, 'user-avatars', values.avatar_url);
+      const bannerUrl = await uploadFile(bannerFile, 'user-banners', values.banner_url);
 
+      // Update profile in database
       const { error } = await supabase
         .from("profiles")
         .update({
           username: values.username,
-          sector: values.sector,
-          avatar_url: avatarUrl
+          sector: values.sector || null,
+          bio: values.bio || null,
+          avatar_url: avatarUrl,
+          banner_url: bannerUrl,
+          instagram_url: values.instagram_url || null,
+          linkedin_url: values.linkedin_url || null,
+          facebook_url: values.facebook_url || null,
+          youtube_url: values.youtube_url || null
         })
         .eq("id", user.id);
 
@@ -264,7 +287,6 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
       console.error("Erro ao atualizar perfil:", error);
       
       // Only show general error if it's not a username duplicate error
-      // (which was already handled with the specific field error)
       if (!error.message || error.message !== "Nome de usuário já em uso") {
         toast({
           title: "Erro",
@@ -290,88 +312,254 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 max-w-2xl mx-auto">
-        <div className="flex justify-center mb-6">
-          <div className="relative group">
-            <div className="w-32 h-32 rounded-full overflow-hidden bg-zinc-800 flex items-center justify-center text-5xl text-zinc-400">
-              {avatarPreview ? (
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <div className="space-y-8">
+          {/* Banner image */}
+          <div>
+            <FormLabel>Imagem de capa</FormLabel>
+            <div className="relative group h-40 mt-2 rounded-xl overflow-hidden bg-zinc-800">
+              {bannerPreview ? (
                 <img 
-                  src={avatarPreview} 
-                  alt="Avatar preview" 
+                  src={bannerPreview} 
+                  alt="Banner preview" 
                   className="w-full h-full object-cover"
                 />
               ) : (
-                user?.email?.charAt(0).toUpperCase() || "U"
+                <div className="w-full h-full flex items-center justify-center text-zinc-400">
+                  Sem imagem de capa
+                </div>
               )}
+              <label 
+                htmlFor="banner-upload" 
+                className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity"
+              >
+                <span className="text-white text-sm font-medium">Alterar imagem de capa</span>
+              </label>
+              <input 
+                id="banner-upload" 
+                type="file" 
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => handleFileChange(e, 'banner')}
+              />
             </div>
-            <label 
-              htmlFor="avatar-upload" 
-              className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity"
-            >
-              <span className="text-white text-sm font-medium">Alterar foto</span>
-            </label>
-            <input 
-              id="avatar-upload" 
-              type="file" 
-              accept="image/*"
-              className="hidden"
-              onChange={handleFileChange}
+          </div>
+
+          {/* Avatar image */}
+          <div className="flex justify-center">
+            <div className="relative group">
+              <div className="w-32 h-32 rounded-full overflow-hidden bg-zinc-800 flex items-center justify-center text-5xl text-zinc-400">
+                {avatarPreview ? (
+                  <img 
+                    src={avatarPreview} 
+                    alt="Avatar preview" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  user?.email?.charAt(0).toUpperCase() || "U"
+                )}
+              </div>
+              <label 
+                htmlFor="avatar-upload" 
+                className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity"
+              >
+                <span className="text-white text-sm font-medium">Alterar foto</span>
+              </label>
+              <input 
+                id="avatar-upload" 
+                type="file" 
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => handleFileChange(e, 'avatar')}
+              />
+            </div>
+          </div>
+
+          {/* Basic info */}
+          <div className="grid gap-4">
+            <FormField
+              control={form.control}
+              name="username"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nome de usuário</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Seu nome ou apelido"
+                      className="bg-zinc-900 border-zinc-700"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="sector"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Setor/Profissão</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Ex: Finanças, Tecnologia, Marketing..."
+                      className="bg-zinc-900 border-zinc-700"
+                      {...field}
+                      value={field.value || ""}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="bio"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Bio</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Conte um pouco sobre você..."
+                      className="bg-zinc-900 border-zinc-700 min-h-[100px]"
+                      {...field}
+                      value={field.value || ""}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
           </div>
+
+          {/* Social media links */}
+          <div>
+            <h3 className="text-lg font-medium mb-4">Redes sociais</h3>
+            <div className="grid gap-4">
+              <FormField
+                control={form.control}
+                name="instagram_url"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex items-center">
+                      <Instagram className="mr-2 h-4 w-4" />
+                      <FormLabel>Instagram</FormLabel>
+                    </div>
+                    <FormControl>
+                      <Input
+                        placeholder="https://instagram.com/seu_usuario"
+                        className="bg-zinc-900 border-zinc-700"
+                        {...field}
+                        value={field.value || ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="linkedin_url"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex items-center">
+                      <Linkedin className="mr-2 h-4 w-4" />
+                      <FormLabel>LinkedIn</FormLabel>
+                    </div>
+                    <FormControl>
+                      <Input
+                        placeholder="https://linkedin.com/in/seu_usuario"
+                        className="bg-zinc-900 border-zinc-700"
+                        {...field}
+                        value={field.value || ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="facebook_url"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex items-center">
+                      <Facebook className="mr-2 h-4 w-4" />
+                      <FormLabel>Facebook</FormLabel>
+                    </div>
+                    <FormControl>
+                      <Input
+                        placeholder="https://facebook.com/seu_usuario"
+                        className="bg-zinc-900 border-zinc-700"
+                        {...field}
+                        value={field.value || ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="youtube_url"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex items-center">
+                      <Youtube className="mr-2 h-4 w-4" />
+                      <FormLabel>YouTube</FormLabel>
+                    </div>
+                    <FormControl>
+                      <Input
+                        placeholder="https://youtube.com/c/seu_canal"
+                        className="bg-zinc-900 border-zinc-700"
+                        {...field}
+                        value={field.value || ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
+
+          <FormField
+            control={form.control}
+            name="avatar_url"
+            render={({ field }) => (
+              <FormItem className="hidden">
+                <FormControl>
+                  <Input
+                    type="text"
+                    {...field}
+                    value={field.value || ""}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="banner_url"
+            render={({ field }) => (
+              <FormItem className="hidden">
+                <FormControl>
+                  <Input
+                    type="text"
+                    {...field}
+                    value={field.value || ""}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
         </div>
-
-        <FormField
-          control={form.control}
-          name="username"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Nome de usuário</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="Seu nome ou apelido"
-                  className="bg-zinc-900 border-zinc-700"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="sector"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Setor/Profissão</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="Ex: Finanças, Tecnologia, Marketing..."
-                  className="bg-zinc-900 border-zinc-700"
-                  {...field}
-                  value={field.value || ""}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="avatar_url"
-          render={({ field }) => (
-            <FormItem className="hidden">
-              <FormControl>
-                <Input
-                  type="text"
-                  {...field}
-                  value={field.value || ""}
-                />
-              </FormControl>
-            </FormItem>
-          )}
-        />
 
         <div className="flex justify-end space-x-4 pt-4">
           <Button

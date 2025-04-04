@@ -1,6 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Instagram, Linkedin, Facebook, Youtube } from "lucide-react";
 import { NavBar } from "@/components/nav-bar";
 import { Footer } from "@/components/footer";
 import { AnimatedElement } from "@/components/ui/animated-element";
@@ -15,6 +16,8 @@ import { useToast } from "@/components/ui/use-toast";
 export default function UserProfile() {
   const [userArticles, setUserArticles] = useState([]);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const { user } = useAuth();
@@ -32,7 +35,7 @@ export default function UserProfile() {
         // Fetch user profile
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('username, avatar_url, sector')
+          .select('username, avatar_url, sector, bio, banner_url, instagram_url, linkedin_url, facebook_url, youtube_url')
           .eq('id', user.id)
           .maybeSingle();
           
@@ -45,6 +48,30 @@ export default function UserProfile() {
           });
         } else {
           setUserProfile(profile);
+        }
+        
+        // Fetch followers count
+        const { count: followerCount, error: followerError } = await supabase
+          .from('follows')
+          .select('*', { count: 'exact', head: true })
+          .eq('followed_id', user.id);
+          
+        if (followerError) {
+          console.error("Erro ao buscar seguidores:", followerError);
+        } else {
+          setFollowersCount(followerCount || 0);
+        }
+        
+        // Fetch following count
+        const { count: followingCountResult, error: followingError } = await supabase
+          .from('follows')
+          .select('*', { count: 'exact', head: true })
+          .eq('follower_id', user.id);
+          
+        if (followingError) {
+          console.error("Erro ao buscar seguidos:", followingError);
+        } else {
+          setFollowingCount(followingCountResult || 0);
         }
         
         // Fetch user articles
@@ -117,7 +144,7 @@ export default function UserProfile() {
         const fetchProfile = async () => {
           const { data, error } = await supabase
             .from('profiles')
-            .select('username, avatar_url, sector')
+            .select('username, avatar_url, sector, bio, banner_url, instagram_url, linkedin_url, facebook_url, youtube_url')
             .eq('id', user.id)
             .maybeSingle();
             
@@ -156,8 +183,21 @@ export default function UserProfile() {
     <div className="min-h-screen bg-black text-white">
       <NavBar />
       
-      <div className="pt-24 pb-20">
-        <div className="container mx-auto px-4">
+      <div className="pt-16 pb-20">
+        {!isEditing && userProfile?.banner_url && (
+          <div 
+            className="w-full h-48 md:h-64 bg-cover bg-center"
+            style={{ backgroundImage: `url(${userProfile.banner_url})` }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-b from-black/10 to-black"></div>
+          </div>
+        )}
+        
+        <div className="container mx-auto px-4 relative">
+          {!isEditing && userProfile?.banner_url && (
+            <div className="h-24"></div>
+          )}
+          
           <AnimatedElement>
             {isEditing ? (
               <div className="mb-12">
@@ -170,8 +210,8 @@ export default function UserProfile() {
                 />
               </div>
             ) : (
-              <div className="mb-12 flex flex-col md:flex-row items-center md:items-start gap-6">
-                <div className="w-24 h-24 rounded-full bg-zinc-800 overflow-hidden flex items-center justify-center text-4xl">
+              <div className={`mb-12 flex flex-col md:flex-row items-center md:items-start gap-6 ${userProfile?.banner_url ? '-mt-16' : 'mt-8'}`}>
+                <div className="w-24 h-24 rounded-full bg-zinc-800 overflow-hidden flex items-center justify-center text-4xl border-4 border-black">
                   {userProfile?.avatar_url ? (
                     <img 
                       src={userProfile.avatar_url} 
@@ -183,7 +223,7 @@ export default function UserProfile() {
                   )}
                 </div>
                 
-                <div className="text-center md:text-left">
+                <div className="flex-1 text-center md:text-left">
                   <h1 className="text-3xl font-bold mb-2">
                     {userProfile?.username || user?.email?.split('@')[0] || "Usuário"}
                   </h1>
@@ -191,10 +231,78 @@ export default function UserProfile() {
                     {user?.email || ""}
                   </p>
                   {userProfile?.sector && (
-                    <p className="text-zinc-300 mb-4">
+                    <p className="text-zinc-300 mb-2">
                       {userProfile.sector}
                     </p>
                   )}
+                  
+                  {userProfile?.bio && (
+                    <p className="text-zinc-300 mb-4 max-w-2xl">
+                      {userProfile.bio}
+                    </p>
+                  )}
+                  
+                  <div className="flex flex-wrap justify-center md:justify-start gap-4 my-4">
+                    <div className="text-center">
+                      <span className="block text-xl font-bold">{followersCount}</span>
+                      <span className="text-zinc-400 text-sm">Seguidores</span>
+                    </div>
+                    <div className="text-center">
+                      <span className="block text-xl font-bold">{followingCount}</span>
+                      <span className="text-zinc-400 text-sm">Seguindo</span>
+                    </div>
+                  </div>
+                  
+                  {/* Social media links */}
+                  {(userProfile?.instagram_url || userProfile?.linkedin_url || userProfile?.facebook_url || userProfile?.youtube_url) && (
+                    <div className="flex flex-wrap gap-3 mb-4 justify-center md:justify-start">
+                      {userProfile?.instagram_url && (
+                        <a 
+                          href={userProfile.instagram_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-zinc-400 hover:text-white transition"
+                        >
+                          <Instagram className="h-5 w-5" />
+                          <span className="sr-only">Instagram</span>
+                        </a>
+                      )}
+                      {userProfile?.linkedin_url && (
+                        <a 
+                          href={userProfile.linkedin_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-zinc-400 hover:text-white transition"
+                        >
+                          <Linkedin className="h-5 w-5" />
+                          <span className="sr-only">LinkedIn</span>
+                        </a>
+                      )}
+                      {userProfile?.facebook_url && (
+                        <a 
+                          href={userProfile.facebook_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-zinc-400 hover:text-white transition"
+                        >
+                          <Facebook className="h-5 w-5" />
+                          <span className="sr-only">Facebook</span>
+                        </a>
+                      )}
+                      {userProfile?.youtube_url && (
+                        <a 
+                          href={userProfile.youtube_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-zinc-400 hover:text-white transition"
+                        >
+                          <Youtube className="h-5 w-5" />
+                          <span className="sr-only">YouTube</span>
+                        </a>
+                      )}
+                    </div>
+                  )}
+                  
                   <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-4">
                     <Button 
                       onClick={() => navigate("/criar-artigo")} 
@@ -231,6 +339,7 @@ export default function UserProfile() {
                       date={new Date(article.created_at).toLocaleDateString('pt-BR')}
                       authorName={article.profiles?.username || 'Você'}
                       authorAvatar={article.profiles?.avatar_url || ''}
+                      showActions={true}
                     />
                     <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
                       <DeleteArticleButton 

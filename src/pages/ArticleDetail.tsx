@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { NavBar } from "@/components/nav-bar";
@@ -26,8 +27,7 @@ interface ArticleData {
     id: string;
     name: string;
     avatar: string;
-    bio: string;
-    isVerified: boolean;
+    sector: string;
   };
   stats: {
     likeCount: number;
@@ -111,8 +111,7 @@ export default function ArticleDetail() {
             id: articleData.profiles.id,
             name: articleData.profiles.username,
             avatar: articleData.profiles.avatar_url,
-            bio: articleData.profiles.sector || "",
-            isVerified: false // We don't have this field, so default to false
+            sector: articleData.profiles.sector || ""
           },
           stats: {
             likeCount: likeCount || 0,
@@ -199,25 +198,13 @@ export default function ArticleDetail() {
                         {article.author.name.charAt(0)}
                       </div>
                     )}
-                    {article.author.isVerified && (
-                      <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                    )}
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{article.author.name}</span>
-                      {article.author.isVerified && (
-                        <Badge variant="outline" className="text-xs font-normal py-0 px-1 h-5 border-white/20">
-                          Verificado
-                        </Badge>
-                      )}
                     </div>
                     <div className="text-zinc-400 text-sm">
-                      {article.author.bio || "Autor"}
+                      {article.author.sector || "Autor"}
                     </div>
                   </div>
                   

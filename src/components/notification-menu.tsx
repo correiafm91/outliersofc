@@ -19,10 +19,11 @@ interface Notification {
   type: 'follow' | 'like' | 'comment';
   created_at: string;
   is_read: boolean;
+  user_id: string;
+  actor_id: string;
   actor: {
     username: string;
     avatar_url: string | null;
-    is_verified: boolean;
   } | null;
   article?: {
     id: string;
@@ -45,35 +46,60 @@ export function NotificationMenu() {
     const fetchNotifications = async () => {
       setIsLoading(true);
       
-      const { data, error } = await supabase
-        .from('notifications')
-        .select(`
-          id,
-          type,
-          created_at,
-          is_read,
-          actor:actor_id (
-            username,
-            avatar_url,
-            is_verified
-          ),
-          article:article_id (
+      try {
+        // Get notifications with actor profiles directly with a join
+        const { data, error } = await supabase
+          .from('notifications')
+          .select(`
             id,
-            title
-          )
-        `)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(10);
+            type,
+            created_at,
+            is_read,
+            user_id,
+            actor_id,
+            article_id,
+            profiles!notifications_actor_id_fkey (
+              username,
+              avatar_url
+            ),
+            articles (
+              id,
+              title
+            )
+          `)
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(10);
       
-      if (error) {
-        console.error("Error fetching notifications:", error);
-      } else {
-        setNotifications(data || []);
-        setUnreadCount((data || []).filter(n => !n.is_read).length);
+        if (error) {
+          console.error("Error fetching notifications:", error);
+        } else {
+          // Format the notification data
+          const formattedNotifications = data.map(item => ({
+            id: item.id,
+            type: item.type,
+            created_at: item.created_at,
+            is_read: item.is_read,
+            user_id: item.user_id,
+            actor_id: item.actor_id,
+            actor: item.profiles ? {
+              username: item.profiles.username,
+              avatar_url: item.profiles.avatar_url,
+            } : null,
+            article: item.articles ? {
+              id: item.articles.id,
+              title: item.articles.title,
+            } : null
+          }));
+          
+          setNotifications(formattedNotifications);
+          setUnreadCount((formattedNotifications || []).filter(n => !n.is_read).length);
+        }
+      } catch (err) {
+        console.error("Exception when fetching notifications:", err);
+      } finally {
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
     };
     
     fetchNotifications();

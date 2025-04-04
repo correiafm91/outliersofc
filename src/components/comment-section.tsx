@@ -8,7 +8,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Badge } from "@/components/ui/badge";
 
 interface Comment {
   id: string;
@@ -18,7 +17,6 @@ interface Comment {
     id: string;
     name: string;
     avatar?: string;
-    isVerified: boolean;
   };
 }
 
@@ -44,41 +42,43 @@ export function CommentSection({ articleId }: CommentSectionProps) {
     const fetchComments = async () => {
       setIsFetching(true);
       
-      const { data, error } = await supabase
-        .from('comments')
-        .select(`
-          id,
-          content,
-          created_at,
-          profiles:user_id (
+      try {
+        const { data, error } = await supabase
+          .from('comments')
+          .select(`
             id,
-            username,
-            avatar_url,
-            is_verified
-          )
-        `)
-        .eq('article_id', articleId)
-        .order('created_at', { ascending: false });
-        
-      if (error) {
-        console.error("Error fetching comments:", error);
-      } else if (data) {
-        const formattedComments = data.map(comment => ({
-          id: comment.id,
-          text: comment.content,
-          createdAt: comment.created_at,
-          user: {
-            id: comment.profiles.id,
-            name: comment.profiles.username,
-            avatar: comment.profiles.avatar_url,
-            isVerified: comment.profiles.is_verified || false
-          }
-        }));
-        
-        setComments(formattedComments);
+            content,
+            created_at,
+            profiles:user_id (
+              id,
+              username,
+              avatar_url
+            )
+          `)
+          .eq('article_id', articleId)
+          .order('created_at', { ascending: false });
+          
+        if (error) {
+          console.error("Error fetching comments:", error);
+        } else if (data) {
+          const formattedComments = data.map(comment => ({
+            id: comment.id,
+            text: comment.content,
+            createdAt: comment.created_at,
+            user: {
+              id: comment.profiles.id,
+              name: comment.profiles.username,
+              avatar: comment.profiles.avatar_url
+            }
+          }));
+          
+          setComments(formattedComments);
+        }
+      } catch (err) {
+        console.error("Error processing comments:", err);
+      } finally {
+        setIsFetching(false);
       }
-      
-      setIsFetching(false);
     };
     
     fetchComments();
@@ -173,13 +173,15 @@ export function CommentSection({ articleId }: CommentSectionProps) {
     try {
       if (user) {
         // Insert comment in database for logged in users
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('comments')
           .insert({
             article_id: articleId,
             user_id: user.id,
             content: newComment
-          });
+          })
+          .select()
+          .single();
           
         if (error) throw error;
         
@@ -201,6 +203,27 @@ export function CommentSection({ articleId }: CommentSectionProps) {
               type: 'comment'
             });
         }
+        
+        // Add the new comment to the state
+        const { data: userData } = await supabase
+          .from('profiles')
+          .select('username, avatar_url')
+          .eq('id', user.id)
+          .single();
+          
+        if (userData) {
+          const newCommentObj: Comment = {
+            id: data.id,
+            text: data.content,
+            createdAt: data.created_at,
+            user: {
+              id: user.id,
+              name: userData.username,
+              avatar: userData.avatar_url
+            }
+          };
+          setComments(prev => [newCommentObj, ...prev]);
+        }
       } else {
         // Handle comments from non-logged in users (store in localStorage)
         const guestComment = {
@@ -210,8 +233,7 @@ export function CommentSection({ articleId }: CommentSectionProps) {
           user: {
             id: 'guest',
             name: userName,
-            avatar: userAvatar,
-            isVerified: false
+            avatar: userAvatar
           }
         };
         
@@ -297,21 +319,13 @@ export function CommentSection({ articleId }: CommentSectionProps) {
                 <Avatar className="h-10 w-10 border border-zinc-700">
                   <AvatarImage src={comment.user.avatar} />
                   <AvatarFallback className="bg-zinc-800 text-zinc-400">
-                    {comment.user.name.charAt(0)}
+                    {comment.user.name.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
                   <div className="flex justify-between items-center mb-2">
                     <div className="flex items-center gap-2">
                       <h4 className="font-medium">{comment.user.name}</h4>
-                      {comment.user.isVerified && (
-                        <Badge variant="outline" className="text-xs font-normal py-0 px-1 h-4 border-white/20">
-                          <span className="sr-only">Verificado</span>
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
-                        </Badge>
-                      )}
                     </div>
                     <span className="text-xs text-zinc-500">{formatDate(comment.createdAt)}</span>
                   </div>
