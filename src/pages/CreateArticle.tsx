@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { NavBar } from "@/components/nav-bar";
@@ -10,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, ensureBucketExists } from "@/integrations/supabase/client";
 
 export default function CreateArticle() {
   const [title, setTitle] = useState("");
@@ -49,42 +48,6 @@ export default function CreateArticle() {
     }
   };
 
-  const ensureBucketExists = async (bucketName: string): Promise<boolean> => {
-    // First check if the bucket exists
-    const { data: buckets } = await supabase.storage.listBuckets();
-    
-    const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
-    
-    if (!bucketExists) {
-      // Create the bucket if it doesn't exist
-      try {
-        const { error } = await supabase.storage.createBucket(bucketName, { 
-          public: true 
-        });
-          
-        if (error) {
-          console.error("Erro ao criar bucket:", error);
-          toast({
-            title: "Erro de armazenamento",
-            description: "Não foi possível criar o bucket de armazenamento.",
-            variant: "destructive",
-          });
-          return false;
-        }
-      } catch (error) {
-        console.error("Erro ao criar bucket:", error);
-        toast({
-          title: "Erro de armazenamento",
-          description: "O sistema de armazenamento não está configurado corretamente.",
-          variant: "destructive",
-        });
-        return false;
-      }
-    }
-    
-    return true;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -103,6 +66,11 @@ export default function CreateArticle() {
       // Ensure the images bucket exists
       const bucketExists = await ensureBucketExists('images');
       if (!bucketExists) {
+        toast({
+          title: "Erro de armazenamento",
+          description: "Não foi possível criar o bucket de armazenamento.",
+          variant: "destructive",
+        });
         setIsSubmitting(false);
         return;
       }

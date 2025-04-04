@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, ensureBucketExists } from "@/integrations/supabase/client";
 import {
   Form,
   FormControl,
@@ -85,7 +84,6 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
             variant: "destructive",
           });
         } else if (data) {
-          setProfileData(data);
           form.reset({
             username: data.username || user.email?.split('@')[0] || "",
             sector: data.sector || "",
@@ -140,48 +138,19 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
     reader.readAsDataURL(file);
   };
 
-  const ensureBucketExists = async (bucketName: string): Promise<boolean> => {
-    try {
-      // First check if the bucket exists
-      const { data: buckets, error: listError } = await supabase.storage.listBuckets();
-      
-      if (listError) {
-        console.error("Error checking buckets:", listError);
-        return false;
-      }
-      
-      const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
-      
-      if (!bucketExists) {
-        // Create the bucket if it doesn't exist
-        const { error } = await supabase.storage.createBucket(bucketName, { 
-          public: true 
-        });
-          
-        if (error) {
-          console.error("Erro ao criar bucket:", error);
-          toast({
-            title: "Erro de armazenamento",
-            description: "Não foi possível criar o bucket de armazenamento.",
-            variant: "destructive",
-          });
-          return false;
-        }
-      }
-      
-      return true;
-    } catch (error) {
-      console.error("Erro ao verificar/criar bucket:", error);
-      return false;
-    }
-  };
-
   const uploadFile = async (file: File | null, bucketName: string, oldUrl: string | null | undefined): Promise<string | null> => {
     if (!file || !user) return oldUrl || null;
 
     // Ensure the bucket exists
     const bucketExists = await ensureBucketExists(bucketName);
-    if (!bucketExists) return oldUrl || null;
+    if (!bucketExists) {
+      toast({
+        title: "Erro de armazenamento",
+        description: `Não foi possível criar o bucket ${bucketName}.`,
+        variant: "destructive",
+      });
+      return oldUrl || null;
+    }
 
     try {
       // Create a unique file path
@@ -197,6 +166,7 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
         });
 
       if (uploadError) {
+        console.error(`Erro ao fazer upload para ${bucketName}:`, uploadError);
         throw uploadError;
       }
 

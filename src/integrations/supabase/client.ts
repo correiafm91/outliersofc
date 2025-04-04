@@ -12,7 +12,6 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
 // Define custom types for tables that need to be used but aren't in the Database type yet
-// This is a temporary solution until the Database type is updated properly
 export type BookmarkTable = {
   id: string;
   user_id: string;
@@ -35,4 +34,45 @@ export type NotificationTable = {
   type: string;
   is_read: boolean;
   created_at: string;
+}
+
+// Create helper functions to handle table access since TypeScript doesn't know about them
+export const tablesWithoutTypes = {
+  bookmarks: () => supabase.from('bookmarks'),
+  follows: () => supabase.from('follows'),
+  notifications: () => supabase.from('notifications')
+};
+
+// Function to ensure storage buckets exist
+export async function ensureBucketExists(bucketName: string): Promise<boolean> {
+  try {
+    // First check if the bucket exists
+    const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+    
+    if (listError) {
+      console.error("Error checking buckets:", listError);
+      return false;
+    }
+    
+    const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
+    
+    if (!bucketExists) {
+      // Create the bucket if it doesn't exist
+      const { error } = await supabase.storage.createBucket(bucketName, { 
+        public: true 
+      });
+        
+      if (error) {
+        console.error("Erro ao criar bucket:", error);
+        return false;
+      }
+      
+      console.log(`Bucket ${bucketName} criado com sucesso`);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error("Erro ao verificar/criar bucket:", error);
+    return false;
+  }
 }
