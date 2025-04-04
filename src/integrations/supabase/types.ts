@@ -85,6 +85,27 @@ export type Database = {
           },
         ]
       }
+      follows: {
+        Row: {
+          created_at: string
+          followed_id: string
+          follower_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          followed_id: string
+          follower_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          followed_id?: string
+          follower_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
       likes: {
         Row: {
           article_id: string
@@ -114,30 +135,86 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          actor_id: string
+          article_id: string | null
+          created_at: string
+          id: string
+          is_read: boolean | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          actor_id: string
+          article_id?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          actor_id?: string
+          article_id?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
+          banner_url: string | null
+          bio: string | null
           created_at: string
+          facebook_url: string | null
           id: string
+          instagram_url: string | null
+          linkedin_url: string | null
           sector: string | null
           updated_at: string
           username: string
+          youtube_url: string | null
         }
         Insert: {
           avatar_url?: string | null
+          banner_url?: string | null
+          bio?: string | null
           created_at?: string
+          facebook_url?: string | null
           id: string
+          instagram_url?: string | null
+          linkedin_url?: string | null
           sector?: string | null
           updated_at?: string
           username: string
+          youtube_url?: string | null
         }
         Update: {
           avatar_url?: string | null
+          banner_url?: string | null
+          bio?: string | null
           created_at?: string
+          facebook_url?: string | null
           id?: string
+          instagram_url?: string | null
+          linkedin_url?: string | null
           sector?: string | null
           updated_at?: string
           username?: string
+          youtube_url?: string | null
         }
         Relationships: []
       }

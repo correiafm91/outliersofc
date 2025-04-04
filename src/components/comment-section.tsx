@@ -3,11 +3,11 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, NotificationTable } from "@/integrations/supabase/client";
 
 interface Comment {
   id: string;
@@ -22,6 +22,19 @@ interface Comment {
 
 interface CommentSectionProps {
   articleId: string;
+}
+
+interface CommentUser {
+  id: string;
+  username: string;
+  avatar_url?: string;
+}
+
+interface CommentData {
+  id: string;
+  content: string;
+  created_at: string;
+  profiles: CommentUser;
 }
 
 export function CommentSection({ articleId }: CommentSectionProps) {
@@ -61,14 +74,15 @@ export function CommentSection({ articleId }: CommentSectionProps) {
         if (error) {
           console.error("Error fetching comments:", error);
         } else if (data) {
-          const formattedComments = data.map(comment => ({
+          // Safely transform the data
+          const formattedComments: Comment[] = data.map((comment: CommentData) => ({
             id: comment.id,
             text: comment.content,
             createdAt: comment.created_at,
             user: {
-              id: comment.profiles.id,
-              name: comment.profiles.username,
-              avatar: comment.profiles.avatar_url
+              id: comment.profiles?.id || 'unknown',
+              name: comment.profiles?.username || 'Usuário desconhecido',
+              avatar: comment.profiles?.avatar_url
             }
           }));
           
@@ -93,7 +107,7 @@ export function CommentSection({ articleId }: CommentSectionProps) {
           table: 'comments',
           filter: `article_id=eq.${articleId}`
         }, 
-        (payload) => {
+        () => {
           // Refetch comments when a new one is added
           fetchComments();
         }
@@ -201,7 +215,7 @@ export function CommentSection({ articleId }: CommentSectionProps) {
               actor_id: user.id,
               article_id: articleId,
               type: 'comment'
-            });
+            } as NotificationTable);
         }
         
         // Add the new comment to the state

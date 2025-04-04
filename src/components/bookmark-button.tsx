@@ -4,7 +4,7 @@ import { Bookmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, BookmarkTable } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface BookmarkButtonProps {
@@ -29,9 +29,9 @@ export function BookmarkButton({ articleId, variant = "icon", className }: Bookm
         .select('id')
         .eq('user_id', user.id)
         .eq('article_id', articleId)
-        .single();
+        .maybeSingle();
       
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error("Error checking bookmark status:", error);
       } else if (data) {
         setIsBookmarked(true);
@@ -80,7 +80,7 @@ export function BookmarkButton({ articleId, variant = "icon", className }: Bookm
           .insert({
             article_id: articleId,
             user_id: user.id,
-          })
+          } as BookmarkTable)
           .select('id')
           .single();
         

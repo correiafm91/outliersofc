@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, FollowTable, NotificationTable } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface UserFollowButtonProps {
@@ -23,13 +23,13 @@ export function UserFollowButton({ userId, username, onFollowChange, className }
 
     const checkFollowStatus = async () => {
       const { data, error } = await supabase
-        .from('followers')
+        .from('follows')
         .select('id')
         .eq('follower_id', user.id)
-        .eq('following_id', userId)
-        .single();
+        .eq('followed_id', userId)
+        .maybeSingle();
       
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error("Error checking follow status:", error);
       } else {
         setIsFollowing(!!data);
@@ -58,10 +58,10 @@ export function UserFollowButton({ userId, username, onFollowChange, className }
       if (isFollowing) {
         // Unfollow user
         const { error } = await supabase
-          .from('followers')
+          .from('follows')
           .delete()
           .eq('follower_id', user.id)
-          .eq('following_id', userId);
+          .eq('followed_id', userId);
         
         if (error) throw error;
         
@@ -75,11 +75,11 @@ export function UserFollowButton({ userId, username, onFollowChange, className }
       } else {
         // Follow user
         const { error } = await supabase
-          .from('followers')
+          .from('follows')
           .insert({
             follower_id: user.id,
-            following_id: userId,
-          });
+            followed_id: userId,
+          } as FollowTable);
         
         if (error) throw error;
         
@@ -93,7 +93,7 @@ export function UserFollowButton({ userId, username, onFollowChange, className }
             user_id: userId,
             actor_id: user.id,
             type: 'follow'
-          });
+          } as NotificationTable);
         
         toast({
           title: "Seguindo",
