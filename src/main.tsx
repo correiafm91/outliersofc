@@ -8,6 +8,8 @@ import { createRequiredBuckets } from './integrations/supabase/create-buckets'
 // Create required storage buckets on app initialization
 createRequiredBuckets().then(success => {
   console.log("Storage buckets initialization:", success ? "successful" : "failed");
+}).catch(error => {
+  console.error("Error initializing storage buckets:", error);
 });
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

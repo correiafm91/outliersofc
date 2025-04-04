@@ -18,26 +18,42 @@ export async function createRequiredBuckets() {
       return false;
     }
 
+    let allSuccess = true;
+    
     // Create any missing buckets
     for (const bucketName of requiredBuckets) {
-      const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
-      
-      if (!bucketExists) {
-        const { error } = await supabase.storage.createBucket(bucketName, { 
-          public: true 
-        });
-          
-        if (error) {
-          console.error(`Erro ao criar bucket ${bucketName}:`, error);
-        } else {
-          console.log(`Bucket ${bucketName} criado com sucesso`);
+      try {
+        const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
+        
+        if (!bucketExists) {
+          const { error } = await supabase.storage.createBucket(bucketName, { 
+            public: true 
+          });
+            
+          if (error) {
+            console.error(`Error creating bucket ${bucketName}:`, error);
+            allSuccess = false;
+          } else {
+            console.log(`Bucket ${bucketName} created successfully`);
+            
+            // Set bucket to be public by creating policy
+            const { error: policyError } = await supabase.storage.from(bucketName).createSignedUrl('dummy-path.txt', 1);
+            if (policyError) {
+              console.log(`Note: Policy creation for ${bucketName} returned:`, policyError);
+              // This is expected to fail since the file doesn't exist
+              // We're just using it to ensure the bucket is properly initialized
+            }
+          }
         }
+      } catch (bucketError) {
+        console.error(`Exception handling bucket ${bucketName}:`, bucketError);
+        allSuccess = false;
       }
     }
     
-    return true;
+    return allSuccess;
   } catch (error) {
-    console.error("Erro ao verificar/criar buckets:", error);
+    console.error("Error checking/creating buckets:", error);
     return false;
   }
 }

@@ -36,11 +36,19 @@ export type NotificationTable = {
   created_at: string;
 }
 
+export type CommentLikesTable = {
+  id: string;
+  user_id: string;
+  comment_id: string;
+  created_at: string;
+}
+
 // Create helper functions to handle table access since TypeScript doesn't know about them
 export const tablesWithoutTypes = {
   bookmarks: () => supabase.from('bookmarks'),
   follows: () => supabase.from('follows'),
-  notifications: () => supabase.from('notifications')
+  notifications: () => supabase.from('notifications'),
+  comment_likes: () => supabase.from('comment_likes')
 };
 
 // Function to ensure storage buckets exist
