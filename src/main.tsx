@@ -12,6 +12,7 @@ createRequiredBuckets().then(success => {
   console.error("Error initializing storage buckets:", error);
 });
 
+// Make sure we're using createRoot from ReactDOM
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />

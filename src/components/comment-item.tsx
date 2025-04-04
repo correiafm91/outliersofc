@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Heart, Trash2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { supabase, tablesWithoutTypes, CommentLikesTable } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from "@/components/ui/use-toast";
 import { formatDistanceToNow } from 'date-fns';
@@ -21,6 +21,13 @@ interface CommentItemProps {
     avatar: string;
   };
   onDeleted?: () => void;
+}
+
+interface CommentLike {
+  id: string;
+  user_id: string;
+  comment_id: string;
+  created_at?: string;
 }
 
 export function CommentItem({ 
@@ -50,7 +57,8 @@ export function CommentItem({
 
     const checkLikeStatus = async () => {
       try {
-        const { data, error } = await tablesWithoutTypes.comment_likes()
+        const { data, error } = await supabase
+          .from('comment_likes')
           .select('id')
           .eq('user_id', currentUser.id)
           .eq('comment_id', id)
@@ -72,7 +80,8 @@ export function CommentItem({
 
     const fetchLikeCount = async () => {
       try {
-        const { count, error } = await tablesWithoutTypes.comment_likes()
+        const { count, error } = await supabase
+          .from('comment_likes')
           .select('*', { count: 'exact', head: true })
           .eq('comment_id', id);
         
@@ -138,7 +147,8 @@ export function CommentItem({
       if (isLiked) {
         // Unlike comment
         if (likeId) {
-          const { error } = await tablesWithoutTypes.comment_likes()
+          const { error } = await supabase
+            .from('comment_likes')
             .delete()
             .eq('id', likeId);
           
@@ -150,11 +160,15 @@ export function CommentItem({
         }
       } else {
         // Like comment
-        const { data, error } = await tablesWithoutTypes.comment_likes()
-          .insert({
-            user_id: currentUser.id,
-            comment_id: id,
-          } as CommentLikesTable)
+        const newLike: CommentLike = {
+          id: crypto.randomUUID(),
+          user_id: currentUser.id,
+          comment_id: id
+        };
+        
+        const { data, error } = await supabase
+          .from('comment_likes')
+          .insert(newLike)
           .select('id')
           .single();
         

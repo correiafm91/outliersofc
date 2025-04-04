@@ -4,13 +4,20 @@ import { Bookmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
-import { supabase, BookmarkTable, tablesWithoutTypes } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface BookmarkButtonProps {
   articleId: string;
   variant?: "icon" | "button";
   className?: string;
+}
+
+interface BookmarkData {
+  id: string;
+  user_id: string;
+  article_id: string;
+  created_at?: string;
 }
 
 export function BookmarkButton({ articleId, variant = "icon", className }: BookmarkButtonProps) {
@@ -24,17 +31,22 @@ export function BookmarkButton({ articleId, variant = "icon", className }: Bookm
     if (!user || !articleId) return;
     
     const checkBookmarkStatus = async () => {
-      const { data, error } = await tablesWithoutTypes.bookmarks()
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('article_id', articleId)
-        .maybeSingle();
-      
-      if (error) {
+      try {
+        const { data, error } = await supabase
+          .from('bookmarks')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('article_id', articleId)
+          .maybeSingle();
+        
+        if (error) {
+          console.error("Error checking bookmark status:", error);
+        } else if (data) {
+          setIsBookmarked(true);
+          setBookmarkId(data.id);
+        }
+      } catch (error) {
         console.error("Error checking bookmark status:", error);
-      } else if (data) {
-        setIsBookmarked(true);
-        setBookmarkId(data.id);
       }
     };
     
@@ -57,7 +69,8 @@ export function BookmarkButton({ articleId, variant = "icon", className }: Bookm
       if (isBookmarked) {
         // Remove bookmark
         if (bookmarkId) {
-          const { error } = await tablesWithoutTypes.bookmarks()
+          const { error } = await supabase
+            .from('bookmarks')
             .delete()
             .eq('id', bookmarkId);
           
@@ -73,11 +86,15 @@ export function BookmarkButton({ articleId, variant = "icon", className }: Bookm
         }
       } else {
         // Add bookmark
-        const { data, error } = await tablesWithoutTypes.bookmarks()
-          .insert({
-            article_id: articleId,
-            user_id: user.id,
-          } as BookmarkTable)
+        const newBookmark: BookmarkData = {
+          id: crypto.randomUUID(),
+          article_id: articleId,
+          user_id: user.id
+        };
+        
+        const { data, error } = await supabase
+          .from('bookmarks')
+          .insert(newBookmark)
           .select('id')
           .single();
         
