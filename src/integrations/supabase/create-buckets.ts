@@ -1,59 +1,71 @@
 
-import { supabase } from "./client";
+import { supabase } from './client';
 
-/**
- * Utility function to create all required storage buckets
- * Call this function when the application starts to ensure all needed buckets exist
- */
-export async function createRequiredBuckets() {
-  // List of required buckets
-  const requiredBuckets = ['images', 'user-avatars', 'user-banners'];
-  
+export const REQUIRED_BUCKETS = ['images', 'user-avatars', 'user-banners'];
+
+// Function to create required storage buckets
+export async function createRequiredBuckets(): Promise<boolean> {
   try {
-    // First check if the buckets exist
-    const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+    const results = await Promise.allSettled(
+      REQUIRED_BUCKETS.map(async (bucketName) => {
+        return await ensureBucketExists(bucketName);
+      })
+    );
+    
+    // Check if all buckets were created successfully
+    const allSucceeded = results.every(
+      (result) => result.status === 'fulfilled' && result.value === true
+    );
+    
+    return allSucceeded;
+  } catch (error) {
+    console.error('Error creating required buckets:', error);
+    return false;
+  }
+}
+
+// Function to ensure a bucket exists
+async function ensureBucketExists(bucketName: string): Promise<boolean> {
+  try {
+    // First try to get the bucket to check if it exists
+    const { data: existingBuckets, error: listError } = await supabase.storage.listBuckets();
     
     if (listError) {
-      console.error("Error checking buckets:", listError);
+      console.error(`Error listing buckets:`, listError);
       return false;
     }
-
-    let allSuccess = true;
     
-    // Create any missing buckets
-    for (const bucketName of requiredBuckets) {
+    const bucketExists = existingBuckets?.some(bucket => bucket.name === bucketName);
+    
+    // If bucket doesn't exist, create it
+    if (!bucketExists) {
       try {
-        const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
+        const { error: createError } = await supabase.storage.createBucket(bucketName, {
+          public: true,
+        });
         
-        if (!bucketExists) {
-          const { error } = await supabase.storage.createBucket(bucketName, { 
-            public: true 
-          });
-            
-          if (error) {
-            console.error(`Error creating bucket ${bucketName}:`, error);
-            allSuccess = false;
-          } else {
-            console.log(`Bucket ${bucketName} created successfully`);
-            
-            // Set bucket to be public by creating policy
-            const { error: policyError } = await supabase.storage.from(bucketName).createSignedUrl('dummy-path.txt', 1);
-            if (policyError) {
-              console.log(`Note: Policy creation for ${bucketName} returned:`, policyError);
-              // This is expected to fail since the file doesn't exist
-              // We're just using it to ensure the bucket is properly initialized
-            }
-          }
+        if (createError) {
+          console.error(`Error creating bucket ${bucketName}:`, createError);
+          return false;
         }
-      } catch (bucketError) {
-        console.error(`Exception handling bucket ${bucketName}:`, bucketError);
-        allSuccess = false;
+        
+        console.log(`Successfully created bucket: ${bucketName}`);
+        
+        // Add public policy to the bucket
+        const { error: policyError } = await supabase.storage.from(bucketName).setPublic();
+        
+        if (policyError) {
+          console.error(`Error setting public policy for ${bucketName}:`, policyError);
+        }
+      } catch (createCatchError) {
+        console.error(`Error creating bucket ${bucketName}:`, createCatchError);
+        return false;
       }
     }
     
-    return allSuccess;
+    return true;
   } catch (error) {
-    console.error("Error checking/creating buckets:", error);
+    console.error(`Error ensuring bucket ${bucketName} exists:`, error);
     return false;
   }
 }

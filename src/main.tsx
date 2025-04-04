@@ -6,6 +6,7 @@ import './index.css'
 import { createRequiredBuckets } from './integrations/supabase/create-buckets'
 
 // Create required storage buckets on app initialization
+// But don't block the app from loading if this fails
 createRequiredBuckets().then(success => {
   console.log("Storage buckets initialization:", success ? "successful" : "failed");
 }).catch(error => {

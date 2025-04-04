@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Instagram, Linkedin, Facebook, Youtube } from "lucide-react";
@@ -225,11 +224,8 @@ export default function UserProfile() {
                 
                 <div className="flex-1 text-center md:text-left">
                   <h1 className="text-3xl font-bold mb-2">
-                    {userProfile?.username || user?.email?.split('@')[0] || "Usuário"}
+                    {userProfile?.username || "Usuário"}
                   </h1>
-                  <p className="text-zinc-400 mb-1">
-                    {user?.email || ""}
-                  </p>
                   {userProfile?.sector && (
                     <p className="text-zinc-300 mb-2">
                       {userProfile.sector}

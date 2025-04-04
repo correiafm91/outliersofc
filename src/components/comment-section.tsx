@@ -12,16 +12,19 @@ interface CommentSectionProps {
   articleId: string;
 }
 
+interface CommentProfile {
+  id: string;
+  username: string;
+  avatar_url: string | null;
+}
+
 interface CommentData {
   id: string;
   content: string;
   created_at: string;
   user_id: string;
-  profiles: {
-    id: string;
-    username: string;
-    avatar_url: string | null;
-  };
+  article_id: string;
+  profiles?: CommentProfile;
 }
 
 export function CommentSection({ articleId }: CommentSectionProps) {
@@ -33,28 +36,53 @@ export function CommentSection({ articleId }: CommentSectionProps) {
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchComments();
+    if (articleId) {
+      fetchComments();
+    }
   }, [articleId]);
 
   const fetchComments = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
+      // First, get all comments for this article
+      const { data: commentsData, error: commentsError } = await supabase
         .from('comments')
-        .select(`
-          *,
-          profiles:user_id (
-            id,
-            username,
-            avatar_url
-          )
-        `)
+        .select('*')
         .eq('article_id', articleId)
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
+      if (commentsError) {
+        console.error('Erro ao carregar comentários:', commentsError);
+        return;
+      }
       
-      setComments(data as unknown as CommentData[]);
+      if (!commentsData || commentsData.length === 0) {
+        setComments([]);
+        setIsLoading(false);
+        return;
+      }
+      
+      // Then fetch profile data for each comment
+      const commentsWithProfiles = await Promise.all(
+        commentsData.map(async (comment) => {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('id, username, avatar_url')
+            .eq('id', comment.user_id)
+            .single();
+            
+          return {
+            ...comment,
+            profiles: profileData || {
+              id: comment.user_id,
+              username: 'Usuário',
+              avatar_url: null
+            }
+          };
+        })
+      );
+      
+      setComments(commentsWithProfiles);
     } catch (error) {
       console.error('Erro ao carregar comentários:', error);
     } finally {
@@ -85,26 +113,28 @@ export function CommentSection({ articleId }: CommentSectionProps) {
 
     setIsSubmitting(true);
     try {
-      const { data, error } = await supabase
+      const commentId = crypto.randomUUID();
+      
+      // Add comment to the database
+      const { error } = await supabase
         .from('comments')
         .insert([
           { 
+            id: commentId,
             article_id: articleId, 
             content: commentText.trim(),
             user_id: user.id
           }
-        ])
-        .select(`
-          *,
-          profiles:user_id (
-            id,
-            username,
-            avatar_url
-          )
-        `)
-        .single();
+        ]);
       
       if (error) throw error;
+      
+      // Get profile data for the current user
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url')
+        .eq('id', user.id)
+        .single();
       
       // Add notification for the article author
       const { data: article } = await supabase
@@ -118,6 +148,7 @@ export function CommentSection({ articleId }: CommentSectionProps) {
           .from('notifications')
           .insert([
             {
+              id: crypto.randomUUID(),
               user_id: article.author_id,
               actor_id: user.id,
               article_id: articleId,
@@ -127,8 +158,23 @@ export function CommentSection({ articleId }: CommentSectionProps) {
           ]);
       }
       
-      setComments(prevComments => [data as unknown as CommentData, ...prevComments]);
+      // Add the new comment to the state
+      const newComment: CommentData = {
+        id: commentId,
+        content: commentText.trim(),
+        created_at: new Date().toISOString(),
+        user_id: user.id,
+        article_id: articleId,
+        profiles: profileData || {
+          id: user.id,
+          username: user.email?.split('@')[0] || 'Usuário',
+          avatar_url: null
+        }
+      };
+      
+      setComments(prevComments => [newComment, ...prevComments]);
       setCommentText("");
+      
       toast({
         title: "Comentário publicado",
         description: "Seu comentário foi adicionado com sucesso",
@@ -145,8 +191,10 @@ export function CommentSection({ articleId }: CommentSectionProps) {
     }
   };
 
-  const handleCommentDelete = () => {
-    fetchComments();
+  const handleCommentDelete = (deletedCommentId: string) => {
+    setComments(prevComments => 
+      prevComments.filter(comment => comment.id !== deletedCommentId)
+    );
   };
 
   return (
@@ -215,11 +263,11 @@ export function CommentSection({ articleId }: CommentSectionProps) {
               createdAt={comment.created_at}
               userId={comment.user_id}
               user={{
-                id: comment.profiles.id,
-                name: comment.profiles.username,
-                avatar: comment.profiles.avatar_url || ''
+                id: comment.profiles?.id || comment.user_id,
+                name: comment.profiles?.username || "Usuário",
+                avatar: comment.profiles?.avatar_url || ""
               }}
-              onDeleted={handleCommentDelete}
+              onDeleted={() => handleCommentDelete(comment.id)}
             />
           ))
         ) : (

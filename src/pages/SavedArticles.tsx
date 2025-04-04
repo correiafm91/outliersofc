@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { NavBar } from "@/components/nav-bar";
@@ -25,37 +24,54 @@ export default function SavedArticles() {
       setIsLoading(true);
       
       try {
-        const { data, error } = await tablesWithoutTypes.bookmarks()
-          .select(`
-            id,
-            article_id,
-            articles:article_id (
-              id, 
-              title,
-              content,
-              image_url,
-              category,
-              created_at,
-              profiles:author_id (
-                username,
-                avatar_url
-              )
-            )
-          `)
+        const { data: bookmarks, error: bookmarksError } = await tablesWithoutTypes.bookmarks()
+          .select('article_id')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
         
-        if (error) {
-          console.error("Erro ao buscar artigos salvos:", error);
-          setSavedArticles([]);
-        } else {
-          // Transform data to match ArticleCard props
-          const articles = data?.map(item => item.articles) || [];
-          setSavedArticles(articles.filter(Boolean));
+        if (bookmarksError) {
+          console.error("Erro ao buscar artigos salvos:", bookmarksError);
+          toast({
+            title: "Erro",
+            description: "Não foi possível carregar seus artigos salvos",
+            variant: "destructive",
+          });
+          return;
         }
+        
+        if (!bookmarks || bookmarks.length === 0) {
+          setSavedArticles([]);
+          return;
+        }
+        
+        const articleIds = bookmarks.map(bookmark => bookmark.article_id);
+        
+        const { data: articlesData, error: articlesError } = await supabase
+          .from('articles')
+          .select(`
+            *,
+            profiles:author_id (username, avatar_url, sector)
+          `)
+          .in('id', articleIds);
+        
+        if (articlesError) {
+          console.error("Erro ao buscar detalhes dos artigos:", articlesError);
+          toast({
+            title: "Erro",
+            description: "Não foi possível carregar os detalhes dos artigos",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        setSavedArticles(articlesData || []);
       } catch (err) {
-        console.error("Exception fetching saved articles:", err);
-        setSavedArticles([]);
+        console.error("Erro ao carregar artigos salvos:", err);
+        toast({
+          title: "Erro",
+          description: "Ocorreu um erro ao carregar seus artigos salvos",
+          variant: "destructive",
+        });
       } finally {
         setIsLoading(false);
       }

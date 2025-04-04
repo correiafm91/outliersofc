@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -34,6 +33,7 @@ export function NotificationMenu() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -41,49 +41,46 @@ export function NotificationMenu() {
     if (!user) return;
 
     const fetchNotifications = async () => {
+      setIsLoading(true);
       try {
-        const { data, error } = await supabase
+        // First, fetch notifications
+        const { data: notificationsData, error: notificationsError } = await supabase
           .from('notifications')
-          .select(`
-            *,
-            actor:actor_id (
-              username, 
-              avatar_url
-            ),
-            article:article_id (
-              id,
-              title
-            )
-          `)
+          .select('*')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(15);
-        
-        if (error) {
-          console.error("Erro ao carregar notificações:", error);
+          
+        if (notificationsError) {
+          console.error('Erro ao carregar notificações:', notificationsError);
           return;
         }
         
-        // Make sure we have valid actor data before setting notifications
-        const validNotifications = data
-          .filter(item => item.actor && typeof item.actor === 'object')
-          .map(item => ({
-            ...item,
-            type: item.type as NotificationType,
-            actor: {
-              username: item.actor?.username || 'Usuário',
-              avatar_url: item.actor?.avatar_url || null
-            },
-            article: item.article ? {
-              id: item.article.id,
-              title: item.article.title
-            } : undefined
-          }));
+        // Then, for each notification, fetch actor profile separately
+        const notificationsWithActors = await Promise.all(
+          (notificationsData || []).map(async (notification) => {
+            // Fetch actor profile
+            const { data: actorData } = await supabase
+              .from('profiles')
+              .select('username, avatar_url')
+              .eq('id', notification.actor_id)
+              .single();
+              
+            return {
+              ...notification,
+              actor: actorData || { 
+                username: 'Usuário', 
+                avatar_url: null 
+              }
+            };
+          })
+        );
         
-        setNotifications(validNotifications);
-        setUnreadCount(validNotifications.filter(n => !n.is_read).length);
+        setNotifications(notificationsWithActors || []);
       } catch (err) {
-        console.error("Exception loading notifications:", err);
+        console.error('Erro ao carregar notificações:', err);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -230,10 +227,15 @@ export function NotificationMenu() {
                 className={`p-3 border-b border-zinc-800 last:border-b-0 flex items-start gap-3 cursor-pointer hover:bg-zinc-800 transition-colors ${!notification.is_read ? 'bg-zinc-800/50' : ''}`}
                 onClick={() => handleNotificationClick(notification)}
               >
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={notification.actor.avatar_url || undefined} />
-                  <AvatarFallback>{notification.actor.username.charAt(0).toUpperCase()}</AvatarFallback>
-                </Avatar>
+                {notification.actor && (
+                  <div className="flex items-center">
+                    <Avatar className="h-6 w-6 mr-2">
+                      <AvatarImage src={notification.actor.avatar_url || undefined} />
+                      <AvatarFallback>{notification.actor.username?.charAt(0).toUpperCase() || "U"}</AvatarFallback>
+                    </Avatar>
+                    <span className="font-medium">{notification.actor.username}</span>
+                  </div>
+                )}
                 <div className="flex-1">
                   <p className="text-sm">
                     <span className="font-medium">{notification.actor.username}</span>{' '}
