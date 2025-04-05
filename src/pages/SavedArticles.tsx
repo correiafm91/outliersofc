@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { NavBar } from "@/components/nav-bar";
@@ -23,18 +22,16 @@ export default function SavedArticles() {
       return;
     }
 
-    const fetchSavedArticles = async () => {
+    const loadBookmarkedArticles = async () => {
       setIsLoading(true);
       
       try {
-        // First get all bookmarks for the current user
         const { data: bookmarks, error: bookmarksError } = await tablesWithoutTypes.bookmarks()
-          .select('article_id')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-        
+          .select('*')
+          .eq('user_id', user.id);
+
         if (bookmarksError) {
-          console.error("Erro ao buscar artigos salvos:", bookmarksError);
+          console.error("Error fetching bookmarks:", bookmarksError);
           toast({
             title: "Erro",
             description: "Não foi possível carregar seus artigos salvos",
@@ -43,39 +40,37 @@ export default function SavedArticles() {
           setIsLoading(false);
           return;
         }
-        
+
         if (!bookmarks || bookmarks.length === 0) {
           setSavedArticles([]);
           setIsLoading(false);
           return;
         }
-        
-        // Extract article IDs from bookmarks
+
         const articleIds = bookmarks.map(bookmark => bookmark.article_id);
-        
-        // Fetch articles data using the IDs
-        const { data: articlesData, error: articlesError } = await supabase
+        const { data: articles, error: articlesError } = await supabase
           .from('articles')
           .select(`
             *,
             profiles:author_id (username, avatar_url, sector)
           `)
           .in('id', articleIds);
-        
+
         if (articlesError) {
-          console.error("Erro ao buscar detalhes dos artigos:", articlesError);
-          toast({
-            title: "Erro",
-            description: "Não foi possível carregar os detalhes dos artigos",
-            variant: "destructive",
-          });
-          setIsLoading(false);
-          return;
+          console.error("Error fetching saved articles:", articlesError);
+        } else {
+          const articlesWithBookmarkInfo = articles?.map(article => {
+            const bookmark = bookmarks.find(b => b.article_id === article.id);
+            return {
+              ...article,
+              bookmark_id: bookmark?.id
+            };
+          }) || [];
+
+          setSavedArticles(articlesWithBookmarkInfo);
         }
-        
-        setSavedArticles(articlesData || []);
       } catch (err) {
-        console.error("Erro ao carregar artigos salvos:", err);
+        console.error("Error loading saved articles:", err);
         toast({
           title: "Erro",
           description: "Ocorreu um erro ao carregar seus artigos salvos",
@@ -86,7 +81,7 @@ export default function SavedArticles() {
       }
     };
 
-    fetchSavedArticles();
+    loadBookmarkedArticles();
   }, [user, navigate, toast]);
 
   if (!user) return null;

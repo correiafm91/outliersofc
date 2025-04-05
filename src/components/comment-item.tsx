@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Heart, Trash2 } from 'lucide-react';
@@ -193,15 +194,21 @@ export function CommentItem({
   return (
     <div className="py-4 border-b border-zinc-800 last:border-b-0">
       <div className="flex gap-3">
-        <Avatar className="h-10 w-10">
-          <AvatarImage src={user.avatar} alt={user.name} />
-          <AvatarFallback>{user.name.charAt(0).toUpperCase()}</AvatarFallback>
-        </Avatar>
+        <Link to={`/user/${user.id}`}>
+          <Avatar className="h-10 w-10">
+            <AvatarImage src={user.avatar} alt={user.name} className="object-cover" />
+            <AvatarFallback className="bg-zinc-800 text-zinc-200">
+              {user.name.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+        </Link>
         
         <div className="flex-1">
           <div className="flex justify-between items-start">
             <div>
-              <span className="font-medium text-white">{user.name}</span>
+              <Link to={`/user/${user.id}`} className="font-medium text-white hover:underline">
+                {user.name}
+              </Link>
               <span className="ml-2 text-xs text-zinc-400">{formattedDate}</span>
             </div>
             

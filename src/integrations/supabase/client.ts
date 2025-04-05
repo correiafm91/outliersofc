@@ -55,11 +55,11 @@ export type Notification = {
   actor: {
     username: string;
     avatar_url: string | null;
-  };
+  } | null;
   article?: {
     id: string;
     title: string;
-  };
+  } | null;
 }
 
 // Create helper functions to handle table access since TypeScript doesn't know about them
@@ -68,4 +68,52 @@ export const tablesWithoutTypes = {
   follows: () => supabase.from('follows'),
   notifications: () => supabase.from('notifications'),
   comment_likes: () => supabase.from('comment_likes')
+};
+
+// Function to manually get actor information for notifications
+export const getNotificationsWithActors = async (userId: string): Promise<Notification[]> => {
+  try {
+    // First get the notifications
+    const { data: notificationsData, error: notificationsError } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+      
+    if (notificationsError) throw notificationsError;
+    if (!notificationsData || notificationsData.length === 0) return [];
+    
+    // Then enhance each notification with actor and article information
+    const enhancedNotifications = await Promise.all(notificationsData.map(async (notification) => {
+      // Get actor info
+      const { data: actorData } = await supabase
+        .from('profiles')
+        .select('username, avatar_url')
+        .eq('id', notification.actor_id)
+        .single();
+        
+      // Get article info if it exists
+      let articleData = null;
+      if (notification.article_id) {
+        const { data: article } = await supabase
+          .from('articles')
+          .select('id, title')
+          .eq('id', notification.article_id)
+          .single();
+          
+        articleData = article;
+      }
+      
+      return {
+        ...notification,
+        actor: actorData,
+        article: articleData
+      } as Notification;
+    }));
+    
+    return enhancedNotifications;
+  } catch (error) {
+    console.error('Error fetching notifications with actors:', error);
+    return [];
+  }
 };

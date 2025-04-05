@@ -25,7 +25,7 @@ export function SearchBar() {
     setIsSearching(true);
     
     try {
-      // Search for articles
+      // Search for articles by title or content
       const { data: articles } = await supabase
         .from('articles')
         .select(`
@@ -39,7 +39,7 @@ export function SearchBar() {
             avatar_url
           )
         `)
-        .ilike('title', `%${query}%`)
+        .or(`title.ilike.%${query}%,content.ilike.%${query}%`)
         .limit(3);
       
       // Search for authors

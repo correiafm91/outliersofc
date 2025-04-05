@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { NavBar } from "@/components/nav-bar";
@@ -207,6 +206,7 @@ export default function Index() {
                     date={new Date(featuredArticle.created_at).toLocaleDateString('pt-BR')}
                     authorName={featuredArticle.profiles?.username || 'Autor desconhecido'}
                     authorAvatar={featuredArticle.profiles?.avatar_url || ''}
+                    authorId={featuredArticle.author_id}
                     featured={true}
                     showActions={true}
                     className="mb-8 col-span-full" 
@@ -223,6 +223,7 @@ export default function Index() {
                     date={new Date(article.created_at).toLocaleDateString('pt-BR')}
                     authorName={article.profiles?.username || 'Autor desconhecido'}
                     authorAvatar={article.profiles?.avatar_url || ''}
+                    authorId={article.author_id}
                     showActions={true}
                   />
                 ))}

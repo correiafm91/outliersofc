@@ -1,3 +1,4 @@
+
 import { Link } from "react-router-dom";
 import { BookmarkButton } from "@/components/bookmark-button";
 
@@ -9,6 +10,7 @@ export interface ArticleCardProps {
   date: string;
   authorName: string;
   authorAvatar?: string;
+  authorId?: string; // Add authorId prop
   imageUrl?: string | null;
   featured?: boolean;
   showActions?: boolean;
@@ -36,14 +38,16 @@ export function ArticleCard(props: ArticleCardProps) {
         <p className="text-zinc-400 text-sm mb-4">{props.excerpt}</p>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Link to={`/profile`}>
-              <img
-                src={props.authorAvatar || 'https://avatar.iran.liara.run/public/boy?username=amir'}
-                alt={props.authorName}
-                className="w-6 h-6 rounded-full object-cover"
-              />
+            <Link to={props.authorId ? `/user/${props.authorId}` : `/profile`}>
+              <div className="w-6 h-6 rounded-full overflow-hidden">
+                <img
+                  src={props.authorAvatar || 'https://avatar.iran.liara.run/public/boy?username=amir'}
+                  alt={props.authorName}
+                  className="w-full h-full object-cover"
+                />
+              </div>
             </Link>
-            <Link to={`/profile`} className="hover:underline">
+            <Link to={props.authorId ? `/user/${props.authorId}` : `/profile`} className="hover:underline">
               <span className="text-zinc-500 text-xs">{props.authorName}</span>
             </Link>
           </div>

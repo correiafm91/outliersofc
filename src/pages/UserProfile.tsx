@@ -31,7 +31,6 @@ export default function UserProfile() {
 
     const fetchUserData = async () => {
       try {
-        // Fetch user profile
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('username, avatar_url, sector, bio, banner_url, instagram_url, linkedin_url, facebook_url, youtube_url')
@@ -49,7 +48,6 @@ export default function UserProfile() {
           setUserProfile(profile);
         }
         
-        // Fetch followers count
         const { count: followerCount, error: followerError } = await supabase
           .from('follows')
           .select('*', { count: 'exact', head: true })
@@ -61,7 +59,6 @@ export default function UserProfile() {
           setFollowersCount(followerCount || 0);
         }
         
-        // Fetch following count
         const { count: followingCountResult, error: followingError } = await supabase
           .from('follows')
           .select('*', { count: 'exact', head: true })
@@ -73,7 +70,6 @@ export default function UserProfile() {
           setFollowingCount(followingCountResult || 0);
         }
         
-        // Fetch user articles
         const { data: articles, error } = await supabase
           .from('articles')
           .select(`
@@ -104,7 +100,6 @@ export default function UserProfile() {
   }, [user, navigate, toast]);
 
   const handleArticleDeleted = async () => {
-    // Refetch articles after deletion
     if (user) {
       setIsLoading(true);
       try {
@@ -137,7 +132,6 @@ export default function UserProfile() {
   
   const handleEditSuccess = () => {
     setIsEditing(false);
-    // Refresh user profile data
     if (user) {
       try {
         const fetchProfile = async () => {
@@ -249,7 +243,6 @@ export default function UserProfile() {
                     </div>
                   </div>
                   
-                  {/* Social media links */}
                   {(userProfile?.instagram_url || userProfile?.linkedin_url || userProfile?.facebook_url || userProfile?.youtube_url) && (
                     <div className="flex flex-wrap gap-3 mb-4 justify-center md:justify-start">
                       {userProfile?.instagram_url && (
