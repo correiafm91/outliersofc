@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { NavBar } from "@/components/nav-bar";
@@ -26,6 +27,7 @@ export default function SavedArticles() {
       setIsLoading(true);
       
       try {
+        // First get all bookmarks for the current user
         const { data: bookmarks, error: bookmarksError } = await tablesWithoutTypes.bookmarks()
           .select('article_id')
           .eq('user_id', user.id)
@@ -48,8 +50,10 @@ export default function SavedArticles() {
           return;
         }
         
+        // Extract article IDs from bookmarks
         const articleIds = bookmarks.map(bookmark => bookmark.article_id);
         
+        // Fetch articles data using the IDs
         const { data: articlesData, error: articlesError } = await supabase
           .from('articles')
           .select(`

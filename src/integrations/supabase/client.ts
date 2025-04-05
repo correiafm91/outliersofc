@@ -43,6 +43,25 @@ export type CommentLikesTable = {
   created_at: string;
 }
 
+// Define notification type with full structure for frontend use
+export type Notification = {
+  id: string;
+  user_id: string;
+  actor_id: string;
+  article_id: string | null;
+  type: string;
+  is_read: boolean;
+  created_at: string;
+  actor: {
+    username: string;
+    avatar_url: string | null;
+  };
+  article?: {
+    id: string;
+    title: string;
+  };
+}
+
 // Create helper functions to handle table access since TypeScript doesn't know about them
 export const tablesWithoutTypes = {
   bookmarks: () => supabase.from('bookmarks'),
@@ -50,37 +69,3 @@ export const tablesWithoutTypes = {
   notifications: () => supabase.from('notifications'),
   comment_likes: () => supabase.from('comment_likes')
 };
-
-// Function to ensure storage buckets exist
-export async function ensureBucketExists(bucketName: string): Promise<boolean> {
-  try {
-    // First check if the bucket exists
-    const { data: buckets, error: listError } = await supabase.storage.listBuckets();
-    
-    if (listError) {
-      console.error("Error checking buckets:", listError);
-      return false;
-    }
-    
-    const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
-    
-    if (!bucketExists) {
-      // Create the bucket if it doesn't exist
-      const { error } = await supabase.storage.createBucket(bucketName, { 
-        public: true 
-      });
-        
-      if (error) {
-        console.error("Error creating bucket:", error);
-        return false;
-      }
-      
-      console.log(`Bucket ${bucketName} created successfully`);
-    }
-    
-    return true;
-  } catch (error) {
-    console.error("Error checking/creating bucket:", error);
-    return false;
-  }
-}

@@ -1,54 +1,55 @@
 
 import { useState, useEffect } from "react";
-import { Bookmark, BookmarkCheck } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { BookmarkIcon } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
 import { supabase, tablesWithoutTypes } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { cn } from "@/lib/utils";
 
-interface BookmarkButtonProps {
+export interface BookmarkButtonProps {
   articleId: string;
+  className?: string;
+  variant?: "default" | "outline";  // Add variant prop
+  onBookmarkChange?: (isBookmarked: boolean) => void;
 }
 
-export function BookmarkButton({ articleId }: BookmarkButtonProps) {
+export function BookmarkButton({ articleId, className, variant = "default", onBookmarkChange }: BookmarkButtonProps) {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { user } = useAuth();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
-    if (user && articleId) {
-      checkBookmarkStatus();
-    }
-  }, [user, articleId]);
-
-  const checkBookmarkStatus = async () => {
     if (!user) return;
 
-    try {
-      // Use tablesWithoutTypes to avoid TypeScript errors
-      const { data, error } = await tablesWithoutTypes.bookmarks()
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('article_id', articleId)
-        .maybeSingle();
+    const checkBookmarkStatus = async () => {
+      try {
+        const { data, error } = await tablesWithoutTypes.bookmarks()
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('article_id', articleId)
+          .maybeSingle();
         
-      if (error) {
-        console.error("Error checking bookmark status:", error);
-        return;
+        if (error) {
+          console.error("Error checking bookmark status:", error);
+          return;
+        }
+        
+        setIsBookmarked(!!data);
+        if (onBookmarkChange) onBookmarkChange(!!data);
+      } catch (err) {
+        console.error("Error checking bookmark status:", err);
       }
-      
-      setIsBookmarked(!!data);
-    } catch (err) {
-      console.error("Error checking bookmark status:", err);
-    }
-  };
+    };
 
-  const handleBookmark = async () => {
+    checkBookmarkStatus();
+  }, [articleId, user, onBookmarkChange]);
+
+  const toggleBookmark = async () => {
     if (!user) {
       toast({
-        title: "Você precisa estar logado",
-        description: "Faça login para salvar este artigo",
+        title: "Login necessário",
+        description: "Faça login para salvar artigos",
         variant: "destructive",
       });
       return;
@@ -63,10 +64,12 @@ export function BookmarkButton({ articleId }: BookmarkButtonProps) {
           .delete()
           .eq('user_id', user.id)
           .eq('article_id', articleId);
-          
+
         if (error) throw error;
-        
+
         setIsBookmarked(false);
+        if (onBookmarkChange) onBookmarkChange(false);
+        
         toast({
           title: "Artigo removido",
           description: "O artigo foi removido dos seus salvos",
@@ -78,20 +81,22 @@ export function BookmarkButton({ articleId }: BookmarkButtonProps) {
             user_id: user.id,
             article_id: articleId
           });
-          
+
         if (error) throw error;
-        
+
         setIsBookmarked(true);
+        if (onBookmarkChange) onBookmarkChange(true);
+        
         toast({
           title: "Artigo salvo",
-          description: "O artigo foi salvo na sua lista",
+          description: "O artigo foi adicionado aos seus salvos",
         });
       }
     } catch (error) {
-      console.error("Error bookmarking article:", error);
+      console.error("Error toggling bookmark:", error);
       toast({
-        title: "Erro ao salvar",
-        description: "Não foi possível realizar esta operação",
+        title: "Erro",
+        description: "Não foi possível atualizar os salvos",
         variant: "destructive",
       });
     } finally {
@@ -99,25 +104,25 @@ export function BookmarkButton({ articleId }: BookmarkButtonProps) {
     }
   };
 
+  const buttonClasses = cn(
+    "inline-flex items-center justify-center p-2 rounded-full transition-colors",
+    variant === "default" 
+      ? "bg-white text-black hover:bg-zinc-200" 
+      : "bg-zinc-900 border border-zinc-700 text-white hover:bg-zinc-800",
+    isLoading ? "opacity-50 cursor-not-allowed" : "",
+    className
+  );
+
   return (
-    <Button
-      variant="ghost"
-      size="sm"
-      className="h-9 px-2 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
-      onClick={handleBookmark}
+    <button
+      onClick={toggleBookmark}
       disabled={isLoading}
+      className={buttonClasses}
+      aria-label={isBookmarked ? "Remover dos salvos" : "Adicionar aos salvos"}
     >
-      {isBookmarked ? (
-        <>
-          <BookmarkCheck className="h-5 w-5 mr-1" />
-          <span>Salvo</span>
-        </>
-      ) : (
-        <>
-          <Bookmark className="h-5 w-5 mr-1" />
-          <span>Salvar</span>
-        </>
-      )}
-    </Button>
+      <BookmarkIcon
+        className={cn("h-4 w-4", isBookmarked ? "fill-current" : "")}
+      />
+    </button>
   );
 }

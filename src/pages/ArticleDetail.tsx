@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { NavBar } from "@/components/nav-bar";
@@ -251,7 +250,10 @@ export default function ArticleDetail() {
                 <aside className="hidden lg:block col-span-1">
                   <div className="sticky top-32 flex flex-col space-y-4 items-center">
                     <LikeButton articleId={article.id} />
-                    <BookmarkButton articleId={article.id} variant="icon" />
+                    <BookmarkButton 
+                      articleId={article.id} 
+                      className="md:scale-110" 
+                    />
                     <ShareButton 
                       articleTitle={article.title}
                       articleUrl={currentUrl}
@@ -270,7 +272,9 @@ export default function ArticleDetail() {
                   {/* Mobile social bar */}
                   <div className="lg:hidden flex justify-center items-center gap-4 my-8">
                     <LikeButton articleId={article.id} />
-                    <BookmarkButton articleId={article.id} variant="button" />
+                    <BookmarkButton 
+                      articleId={article.id} 
+                    />
                     <ShareButton 
                       articleTitle={article.title}
                       articleUrl={currentUrl}
