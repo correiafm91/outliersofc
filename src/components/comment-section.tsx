@@ -140,22 +140,27 @@ export function CommentSection({ articleId }: CommentSectionProps) {
         return;
       }
       
-      // Transform to the expected format
-      const formattedComments = commentsData.map(comment => ({
+      // Transform to the expected format with default values for parent_id and mention_user_id
+      const formattedComments: CommentData[] = commentsData.map(comment => ({
         ...comment,
+        parent_id: comment.parent_id || null,
+        mention_user_id: comment.mention_user_id || null,
         profiles: comment.profiles as unknown as CommentProfile
       }));
       
       setComments(formattedComments);
       
       // Collect unique user IDs from comments for mention suggestions
-      const commenters = commentsData
-        .map(comment => comment.profiles)
-        .filter((profile): profile is CommentProfile => !!profile);
+      const uniqueCommenters: CommentProfile[] = [];
       
-      const uniqueCommenters = Array.from(
-        new Map(commenters.map(item => [item.id, item])).values()
-      );
+      commentsData.forEach(comment => {
+        if (comment.profiles) {
+          const profile = comment.profiles as unknown as CommentProfile;
+          if (profile && profile.id && !uniqueCommenters.some(u => u.id === profile.id)) {
+            uniqueCommenters.push(profile);
+          }
+        }
+      });
       
       setMentionedUsers(prev => {
         const existingIds = new Set(prev.map(u => u.id));
@@ -215,16 +220,14 @@ export function CommentSection({ articleId }: CommentSectionProps) {
       // Add comment to the database
       const { error } = await supabase
         .from('comments')
-        .insert([
-          { 
-            id: commentId,
-            article_id: articleId, 
-            content: commentText.trim(),
-            user_id: user.id,
-            parent_id: replyTo ? replyTo.id : null,
-            mention_user_id: mentionUserId
-          }
-        ]);
+        .insert({
+          id: commentId,
+          article_id: articleId, 
+          content: commentText.trim(),
+          user_id: user.id,
+          parent_id: replyTo ? replyTo.id : null,
+          mention_user_id: mentionUserId
+        });
       
       if (error) throw error;
       

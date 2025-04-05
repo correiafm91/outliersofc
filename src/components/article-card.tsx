@@ -39,7 +39,7 @@ export function ArticleCard(props: ArticleCardProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Link to={props.authorId ? `/user/${props.authorId}` : `/profile`} aria-label={`Ver perfil de ${props.authorName}`}>
-              <div className="w-8 h-8 rounded-full overflow-hidden">
+              <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
                 <img
                   src={props.authorAvatar || 'https://avatar.iran.liara.run/public/boy?username=amir'}
                   alt={props.authorName}
