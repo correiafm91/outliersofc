@@ -122,7 +122,6 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Preview the selected image
     const reader = new FileReader();
     reader.onload = (event) => {
       const result = event.target?.result as string;
@@ -141,23 +140,16 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
   const uploadFile = async (file: File | null, bucketName: string, oldUrl: string | null | undefined): Promise<string | null> => {
     if (!file || !user) return oldUrl || null;
 
-    // Ensure the bucket exists
-    const bucketExists = await ensureBucketExists(bucketName);
-    if (!bucketExists) {
-      toast({
-        title: "Erro de armazenamento",
-        description: `Não foi possível criar o bucket ${bucketName}.`,
-        variant: "destructive",
-      });
-      return oldUrl || null;
-    }
-
     try {
-      // Create a unique file path
+      await supabase.storage.createBucket(bucketName, {
+        public: true
+      }).catch(error => {
+        console.log(`Bucket ${bucketName} might already exist:`, error);
+      });
+
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
 
-      // Upload the file
       const { data, error: uploadError } = await supabase.storage
         .from(bucketName)
         .upload(fileName, file, {
@@ -170,7 +162,6 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
         throw uploadError;
       }
 
-      // Get the public URL
       const { data: urlData } = supabase.storage
         .from(bucketName)
         .getPublicUrl(fileName);
@@ -192,7 +183,6 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
 
     setIsLoading(true);
     try {
-      // Check if the username already exists (but not for this user)
       if (values.username !== profileData?.username) {
         const { data: existingUser, error: checkError } = await supabase
           .from("profiles")
@@ -215,11 +205,9 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
         }
       }
 
-      // Upload avatar and banner if selected
       const avatarUrl = await uploadFile(avatarFile, 'user-avatars', values.avatar_url);
       const bannerUrl = await uploadFile(bannerFile, 'user-banners', values.banner_url);
 
-      // Update profile in database
       const { error } = await supabase
         .from("profiles")
         .update({
@@ -256,7 +244,6 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
     } catch (error: any) {
       console.error("Erro ao atualizar perfil:", error);
       
-      // Only show general error if it's not a username duplicate error
       if (!error.message || error.message !== "Nome de usuário já em uso") {
         toast({
           title: "Erro",
@@ -284,7 +271,6 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <div className="space-y-8">
-          {/* Banner image */}
           <div>
             <FormLabel>Imagem de capa</FormLabel>
             <div className="relative group h-40 mt-2 rounded-xl overflow-hidden bg-zinc-800">
@@ -315,7 +301,6 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
             </div>
           </div>
 
-          {/* Avatar image */}
           <div className="flex justify-center">
             <div className="relative group">
               <div className="w-32 h-32 rounded-full overflow-hidden bg-zinc-800 flex items-center justify-center text-5xl text-zinc-400">
@@ -345,7 +330,6 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
             </div>
           </div>
 
-          {/* Basic info */}
           <div className="grid gap-4">
             <FormField
               control={form.control}
@@ -404,7 +388,6 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
             />
           </div>
 
-          {/* Social media links */}
           <div>
             <h3 className="text-lg font-medium mb-4">Redes sociais</h3>
             <div className="grid gap-4">

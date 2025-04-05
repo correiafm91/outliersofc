@@ -71,16 +71,16 @@ export async function ensureBucketExists(bucketName: string): Promise<boolean> {
       });
         
       if (error) {
-        console.error("Erro ao criar bucket:", error);
+        console.error("Error creating bucket:", error);
         return false;
       }
       
-      console.log(`Bucket ${bucketName} criado com sucesso`);
+      console.log(`Bucket ${bucketName} created successfully`);
     }
     
     return true;
   } catch (error) {
-    console.error("Erro ao verificar/criar bucket:", error);
+    console.error("Error checking/creating bucket:", error);
     return false;
   }
 }

@@ -51,12 +51,8 @@ async function ensureBucketExists(bucketName: string): Promise<boolean> {
         
         console.log(`Successfully created bucket: ${bucketName}`);
         
-        // Add public policy to the bucket
-        const { error: policyError } = await supabase.storage.from(bucketName).setPublic();
-        
-        if (policyError) {
-          console.error(`Error setting public policy for ${bucketName}:`, policyError);
-        }
+        // Set bucket to public (removed setPublic which doesn't exist)
+        // Instead, we'll use specific RLS policies if needed
       } catch (createCatchError) {
         console.error(`Error creating bucket ${bucketName}:`, createCatchError);
         return false;

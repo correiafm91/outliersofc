@@ -9,23 +9,19 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 
-type NotificationType = "follow" | "comment" | "like";
+type NotificationType = "follow" | "like" | "comment" | "mention";
 
 interface Notification {
   id: string;
   type: NotificationType;
-  created_at: string;
-  is_read: boolean;
   user_id: string;
   actor_id: string;
-  article_id?: string;
-  actor: {
+  article_id: string | null;
+  is_read: boolean;
+  created_at: string;
+  actor?: {
     username: string;
     avatar_url: string | null;
-  };
-  article?: {
-    id: string;
-    title: string;
   };
 }
 
@@ -41,44 +37,37 @@ export function NotificationMenu() {
     if (!user) return;
 
     const fetchNotifications = async () => {
+      if (!user) return;
+      
       setIsLoading(true);
+      
       try {
-        // First, fetch notifications
-        const { data: notificationsData, error: notificationsError } = await supabase
+        // Get notifications
+        const { data: notifications, error } = await supabase
           .from('notifications')
-          .select('*')
+          .select(`
+            *,
+            actor:actor_id (username, avatar_url)
+          `)
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
-          .limit(15);
-          
-        if (notificationsError) {
-          console.error('Erro ao carregar notificações:', notificationsError);
+          .limit(10);
+        
+        if (error) {
+          console.error("Error fetching notifications:", error);
           return;
         }
         
-        // Then, for each notification, fetch actor profile separately
-        const notificationsWithActors = await Promise.all(
-          (notificationsData || []).map(async (notification) => {
-            // Fetch actor profile
-            const { data: actorData } = await supabase
-              .from('profiles')
-              .select('username, avatar_url')
-              .eq('id', notification.actor_id)
-              .single();
-              
-            return {
-              ...notification,
-              actor: actorData || { 
-                username: 'Usuário', 
-                avatar_url: null 
-              }
-            };
-          })
-        );
+        // Convert string types to NotificationType to satisfy TypeScript
+        const typedNotifications = notifications.map(notif => ({
+          ...notif,
+          type: notif.type as NotificationType,
+          is_read: !!notif.is_read
+        }));
         
-        setNotifications(notificationsWithActors || []);
+        setNotifications(typedNotifications);
       } catch (err) {
-        console.error('Erro ao carregar notificações:', err);
+        console.error("Error loading notifications:", err);
       } finally {
         setIsLoading(false);
       }
@@ -164,12 +153,8 @@ export function NotificationMenu() {
     setIsOpen(false);
 
     if (notification.type === 'follow') {
-      // Navigate to profile
-      // In a real app, this would go to the actor's profile
-      // but for simplicity we just go to user profile for now
       navigate('/profile');
     } else if (notification.article) {
-      // Navigate to article
       navigate(`/article/${notification.article.id}`);
     }
   };
@@ -182,6 +167,8 @@ export function NotificationMenu() {
         return `curtiu seu artigo "${notification.article?.title || 'artigo'}"`;
       case 'comment':
         return `comentou em seu artigo "${notification.article?.title || 'artigo'}"`;
+      case 'mention':
+        return `te mencionou em seu artigo "${notification.article?.title || 'artigo'}"`;
       default:
         return "interagiu com você";
     }

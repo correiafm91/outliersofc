@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase, ensureBucketExists } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function CreateArticle() {
   const [title, setTitle] = useState("");
@@ -63,16 +63,14 @@ export default function CreateArticle() {
     setIsSubmitting(true);
 
     try {
-      // Ensure the images bucket exists
-      const bucketExists = await ensureBucketExists('images');
-      if (!bucketExists) {
-        toast({
-          title: "Erro de armazenamento",
-          description: "Não foi possível criar o bucket de armazenamento.",
-          variant: "destructive",
+      // Create the 'images' bucket if it doesn't exist
+      try {
+        await supabase.storage.createBucket('images', {
+          public: true
         });
-        setIsSubmitting(false);
-        return;
+      } catch (bucketError) {
+        // If bucket already exists, this will error but we can continue
+        console.log("Bucket may already exist:", bucketError);
       }
 
       // Upload da imagem para o bucket 'images'

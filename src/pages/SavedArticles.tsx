@@ -5,6 +5,7 @@ import { Footer } from "@/components/footer";
 import { ArticleCard } from "@/components/article-card";
 import { AnimatedElement } from "@/components/ui/animated-element";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase, tablesWithoutTypes } from "@/integrations/supabase/client";
 
@@ -13,6 +14,7 @@ export default function SavedArticles() {
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!user) {
@@ -36,11 +38,13 @@ export default function SavedArticles() {
             description: "Não foi possível carregar seus artigos salvos",
             variant: "destructive",
           });
+          setIsLoading(false);
           return;
         }
         
         if (!bookmarks || bookmarks.length === 0) {
           setSavedArticles([]);
+          setIsLoading(false);
           return;
         }
         
@@ -61,6 +65,7 @@ export default function SavedArticles() {
             description: "Não foi possível carregar os detalhes dos artigos",
             variant: "destructive",
           });
+          setIsLoading(false);
           return;
         }
         
@@ -78,7 +83,7 @@ export default function SavedArticles() {
     };
 
     fetchSavedArticles();
-  }, [user, navigate]);
+  }, [user, navigate, toast]);
 
   if (!user) return null;
   
