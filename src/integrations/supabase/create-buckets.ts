@@ -60,12 +60,9 @@ async function ensureBucketExists(bucketName: string): Promise<boolean> {
         
         console.log(`Successfully created bucket: ${bucketName}`);
         
-        // Update public policy for the bucket
-        const { error: policyError } = await supabase.storage.from(bucketName).getPublicUrl('test-policy');
-        if (policyError) {
-          console.log(`Note: Could not test public policy for ${bucketName}:`, policyError);
-          // This is expected to fail as the file doesn't exist, we just want to make sure the bucket is public
-        }
+        // Update public policy for the bucket - Fix: Remove error property access
+        const publicUrlData = supabase.storage.from(bucketName).getPublicUrl('test-policy');
+        console.log(`Public URL for ${bucketName}:`, publicUrlData);
         
         return true;
       } catch (createCatchError) {
@@ -87,3 +84,6 @@ async function ensureBucketExists(bucketName: string): Promise<boolean> {
     return false;
   }
 }
+
+// Export the ensureBucketExists function so it can be used elsewhere
+export { ensureBucketExists };

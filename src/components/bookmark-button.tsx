@@ -65,11 +65,12 @@ export function BookmarkButton({ articleId, className = "" }: BookmarkButtonProp
           description: "O artigo foi removido dos seus favoritos",
         });
       } else {
-        // Add bookmark
-        const newBookmark: Partial<BookmarkTable> = {
+        // Add bookmark - Fix: Use a properly typed object, not Partial<BookmarkTable>
+        const newBookmark = {
           id: crypto.randomUUID(),
           user_id: user.id,
-          article_id: articleId
+          article_id: articleId,
+          created_at: new Date().toISOString()
         };
         
         const { error } = await tablesWithoutTypes.bookmarks()

@@ -114,6 +114,8 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          mention_user_id: string | null
+          parent_id: string | null
           updated_at: string
           user_id: string
         }
@@ -122,6 +124,8 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          mention_user_id?: string | null
+          parent_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -130,6 +134,8 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          mention_user_id?: string | null
+          parent_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -281,7 +287,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      add_column_if_not_exists: {
+        Args: {
+          table_name: string
+          column_name: string
+          column_type: string
+        }
+        Returns: undefined
+      }
+      check_column_exists: {
+        Args: {
+          table_name: string
+          column_name: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
