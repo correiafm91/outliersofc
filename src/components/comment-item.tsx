@@ -3,11 +3,11 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Heart, Trash2 } from 'lucide-react';
+import { Heart, Trash2, Reply } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -16,12 +16,17 @@ interface CommentItemProps {
   text: string;
   createdAt: string;
   userId: string;
+  parentId?: string | null;
+  mentionUserId?: string | null;
+  replyToUsername?: string | null;
   user: {
     id: string;
     name: string;
     avatar: string;
   };
   onDeleted?: () => void;
+  onReply?: () => void;
+  articleId: string;
 }
 
 interface CommentLike {
@@ -36,8 +41,13 @@ export function CommentItem({
   text, 
   createdAt, 
   userId,
+  parentId,
+  mentionUserId,
+  replyToUsername,
   user, 
-  onDeleted 
+  onDeleted,
+  onReply,
+  articleId
 }: CommentItemProps) {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
@@ -46,11 +56,18 @@ export function CommentItem({
   const [likeCount, setLikeCount] = useState(0);
   const [likeId, setLikeId] = useState<string | null>(null);
   const [isLikeLoading, setIsLikeLoading] = useState(false);
+  const [mentionedUser, setMentionedUser] = useState<{ id: string, username: string } | null>(null);
   const isOwner = currentUser?.id === userId;
   const formattedDate = formatDistanceToNow(new Date(createdAt), { 
     addSuffix: true,
     locale: ptBR 
   });
+
+  // Format text to highlight mentions
+  const formattedText = text.replace(
+    /@(\w+)/g,
+    (match, username) => `<span class="text-blue-400">@${username}</span>`
+  );
 
   // Check if the user has liked this comment
   useEffect(() => {
@@ -97,9 +114,34 @@ export function CommentItem({
       }
     };
 
+    // Fetch mentioned user information
+    const fetchMentionedUser = async () => {
+      if (mentionUserId) {
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('id, username')
+            .eq('id', mentionUserId)
+            .single();
+            
+          if (error) {
+            console.error('Error fetching mentioned user:', error);
+            return;
+          }
+          
+          if (data) {
+            setMentionedUser(data);
+          }
+        } catch (err) {
+          console.error('Error fetching mentioned user:', err);
+        }
+      }
+    };
+
     checkLikeStatus();
     fetchLikeCount();
-  }, [currentUser, id]);
+    fetchMentionedUser();
+  }, [currentUser, id, mentionUserId]);
 
   const handleDelete = async () => {
     if (!currentUser || !isOwner) return;
@@ -175,6 +217,20 @@ export function CommentItem({
         
         if (error) throw error;
         
+        // Create notification if the comment is not by the current user
+        if (userId !== currentUser.id) {
+          await supabase
+            .from('notifications')
+            .insert({
+              id: crypto.randomUUID(),
+              user_id: userId,
+              actor_id: currentUser.id,
+              article_id: articleId,
+              type: 'comment_like',
+              is_read: false
+            });
+        }
+        
         setIsLiked(true);
         setLikeId(data.id);
         setLikeCount(prev => prev + 1);
@@ -188,6 +244,12 @@ export function CommentItem({
       });
     } finally {
       setIsLikeLoading(false);
+    }
+  };
+
+  const handleReply = () => {
+    if (onReply) {
+      onReply();
     }
   };
 
@@ -213,6 +275,17 @@ export function CommentItem({
             </div>
             
             <div className="flex items-center gap-2">
+              {/* Reply Button */}
+              {currentUser && (
+                <button
+                  onClick={handleReply}
+                  className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
+                >
+                  <Reply className="h-4 w-4" />
+                  <span className="hidden sm:inline">Responder</span>
+                </button>
+              )}
+              
               {/* Like Button */}
               <button
                 onClick={handleLike}
@@ -263,8 +336,15 @@ export function CommentItem({
             </div>
           </div>
           
+          {/* Reply-to information */}
+          {replyToUsername && (
+            <div className="mt-1 mb-2 text-xs text-zinc-400">
+              Resposta para <span className="text-blue-400">@{replyToUsername}</span>
+            </div>
+          )}
+          
           <div className="mt-2 text-zinc-200 whitespace-pre-wrap">
-            {text}
+            <div dangerouslySetInnerHTML={{ __html: formattedText }} />
           </div>
         </div>
       </div>

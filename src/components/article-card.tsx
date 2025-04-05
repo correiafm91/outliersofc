@@ -9,7 +9,7 @@ export interface ArticleCardProps {
   category: string;
   date: string;
   authorName: string;
-  authorAvatar?: string;
+  authorAvatar?: string | null;
   authorId?: string; // Add authorId prop
   imageUrl?: string | null;
   featured?: boolean;
@@ -38,8 +38,8 @@ export function ArticleCard(props: ArticleCardProps) {
         <p className="text-zinc-400 text-sm mb-4">{props.excerpt}</p>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Link to={props.authorId ? `/user/${props.authorId}` : `/profile`}>
-              <div className="w-6 h-6 rounded-full overflow-hidden">
+            <Link to={props.authorId ? `/user/${props.authorId}` : `/profile`} aria-label={`Ver perfil de ${props.authorName}`}>
+              <div className="w-8 h-8 rounded-full overflow-hidden">
                 <img
                   src={props.authorAvatar || 'https://avatar.iran.liara.run/public/boy?username=amir'}
                   alt={props.authorName}
