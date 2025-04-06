@@ -1,9 +1,35 @@
+
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Type definitions for tables
+export interface BookmarkTable {
+  id: string;
+  user_id: string;
+  article_id: string;
+  created_at: string;
+}
+
+export interface FollowTable {
+  id: string;
+  follower_id: string;
+  followed_id: string;
+  created_at: string;
+}
+
+export interface NotificationTable {
+  id: string;
+  created_at: string;
+  user_id: string;
+  actor_id: string;
+  article_id: string | null;
+  type: 'follow' | 'like' | 'comment' | 'comment_like' | 'comment_reply' | 'comment_mention';
+  is_read: boolean;
+}
 
 export interface Notification {
   id: string;
@@ -23,6 +49,17 @@ export interface Notification {
     title: string;
   };
 }
+
+// Helper functions to access tables with proper typing
+export const tablesWithoutTypes = {
+  bookmarks: () => supabase.from('bookmarks'),
+  follows: () => supabase.from('follows'),
+  notifications: () => supabase.from('notifications'),
+  profiles: () => supabase.from('profiles'),
+  articles: () => supabase.from('articles'),
+  likes: () => supabase.from('likes'),
+  comments: () => supabase.from('comments')
+};
 
 export const getNotificationsWithActors = async (userId: string): Promise<Notification[]> => {
   try {
@@ -65,13 +102,32 @@ export const getNotificationsWithActors = async (userId: string): Promise<Notifi
         id: notification.article.id,
         title: notification.article.title
       } : undefined
-    })) as Notification[];
+    }));
   } catch (error) {
     console.error("Erro ao buscar notificações:", error);
     return [];
   }
 };
 
+// Storage bucket helper
+export const ensureBucketExists = async (bucketName: string): Promise<void> => {
+  try {
+    const { data: bucket, error } = await supabase.storage.getBucket(bucketName);
+    
+    if (error && error.message.includes('does not exist')) {
+      await supabase.storage.createBucket(bucketName, {
+        public: false
+      });
+      console.log(`Bucket ${bucketName} created successfully.`);
+    } else if (error) {
+      console.error(`Error checking bucket ${bucketName}:`, error);
+    }
+  } catch (error) {
+    console.error(`Error ensuring bucket ${bucketName} exists:`, error);
+  }
+};
+
+// The ensureColumnsExist function
 export const ensureColumnsExist = async () => {
   try {
     // Check if the 'sector' column exists in the 'profiles' table

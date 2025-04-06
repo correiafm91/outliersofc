@@ -65,8 +65,8 @@ export function BookmarkButton({ articleId, className = "" }: BookmarkButtonProp
           description: "O artigo foi removido dos seus favoritos",
         });
       } else {
-        // Add bookmark - Fix: Use a properly typed object, not Partial<BookmarkTable>
-        const newBookmark = {
+        // Add bookmark
+        const newBookmark: BookmarkTable = {
           id: crypto.randomUUID(),
           user_id: user.id,
           article_id: articleId,

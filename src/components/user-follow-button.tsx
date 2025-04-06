@@ -72,11 +72,15 @@ export function UserFollowButton({ userId, username, onFollowChange, className }
         });
       } else {
         // Follow user
+        const newFollow: FollowTable = {
+          id: crypto.randomUUID(),
+          follower_id: user.id,
+          followed_id: userId,
+          created_at: new Date().toISOString()
+        };
+        
         const { error } = await tablesWithoutTypes.follows()
-          .insert({
-            follower_id: user.id,
-            followed_id: userId,
-          } as FollowTable);
+          .insert(newFollow);
         
         if (error) throw error;
         
@@ -84,12 +88,18 @@ export function UserFollowButton({ userId, username, onFollowChange, className }
         if (onFollowChange) onFollowChange(true);
         
         // Create notification
+        const newNotification: NotificationTable = {
+          id: crypto.randomUUID(),
+          user_id: userId,
+          actor_id: user.id,
+          type: 'follow',
+          created_at: new Date().toISOString(),
+          is_read: false,
+          article_id: null
+        };
+        
         await tablesWithoutTypes.notifications()
-          .insert({
-            user_id: userId,
-            actor_id: user.id,
-            type: 'follow'
-          } as NotificationTable);
+          .insert(newNotification);
         
         toast({
           title: "Seguindo",

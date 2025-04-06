@@ -5,63 +5,91 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 
-interface DeleteArticleButtonProps {
+export interface DeleteArticleButtonProps {
   articleId: string;
   onDeleted?: () => void;
+  redirectTo?: string;
 }
 
-export function DeleteArticleButton({ articleId, onDeleted }: DeleteArticleButtonProps) {
+export function DeleteArticleButton({ articleId, onDeleted, redirectTo }: DeleteArticleButtonProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   const handleDelete = async () => {
+    if (!window.confirm("Tem certeza que deseja excluir este artigo? Esta ação não pode ser desfeita.")) {
+      return;
+    }
+
     setIsDeleting(true);
-    
+
     try {
-      // First delete related data (comments, likes, etc.)
-      await supabase.from('comment_likes').delete().eq('comment_id', supabase.from('comments').select('id').eq('article_id', articleId));
-      await supabase.from('comments').delete().eq('article_id', articleId);
-      await supabase.from('likes').delete().eq('article_id', articleId);
-      await supabase.from('bookmarks').delete().eq('article_id', articleId);
-      await supabase.from('notifications').delete().eq('article_id', articleId);
-      
-      // Then delete the article itself
-      const { error } = await supabase
+      // Delete all comments associated with the article
+      const { error: commentsError } = await supabase
+        .from('comments')
+        .delete()
+        .eq('article_id', articleId);
+
+      if (commentsError) {
+        console.error("Error deleting comments:", commentsError);
+      }
+
+      // Delete all likes associated with the article
+      const { error: likesError } = await supabase
+        .from('likes')
+        .delete()
+        .eq('article_id', articleId);
+
+      if (likesError) {
+        console.error("Error deleting likes:", likesError);
+      }
+
+      // Delete all bookmarks associated with the article
+      const { error: bookmarksError } = await supabase
+        .from('bookmarks')
+        .delete()
+        .eq('article_id', articleId);
+
+      if (bookmarksError) {
+        console.error("Error deleting bookmarks:", bookmarksError);
+      }
+
+      // Delete notifications related to the article
+      const { error: notificationsError } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('article_id', articleId);
+
+      if (notificationsError) {
+        console.error("Error deleting notifications:", notificationsError);
+      }
+
+      // Finally delete the article
+      const { error: articleError } = await supabase
         .from('articles')
         .delete()
         .eq('id', articleId);
-        
-      if (error) throw error;
-      
+
+      if (articleError) throw articleError;
+
       toast({
         title: "Artigo excluído",
-        description: "Seu artigo foi excluído com sucesso",
+        description: "O artigo foi excluído com sucesso.",
       });
-      
+
       if (onDeleted) {
         onDeleted();
-      } else {
-        // Navigate to home if no callback provided
-        navigate("/");
+      }
+
+      if (redirectTo) {
+        navigate(redirectTo);
       }
     } catch (error) {
-      console.error("Erro ao excluir artigo:", error);
+      console.error("Error deleting article:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível excluir o artigo",
+        description: "Não foi possível excluir o artigo.",
         variant: "destructive",
       });
     } finally {
@@ -70,36 +98,18 @@ export function DeleteArticleButton({ articleId, onDeleted }: DeleteArticleButto
   };
 
   return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button 
-          variant="outline" 
-          size="sm"
-          className="text-red-500 border-red-500/20 hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/30"
-        >
-          <Trash2 className="h-4 w-4 mr-2" />
-          Excluir
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent className="bg-zinc-900 border-zinc-800">
-        <AlertDialogHeader>
-          <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Esta ação não pode ser desfeita. Isso excluirá permanentemente o seu artigo
-            e removerá todos os dados associados a ele.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel className="bg-zinc-800 text-white hover:bg-zinc-700">Cancelar</AlertDialogCancel>
-          <AlertDialogAction 
-            className="bg-red-500 text-white hover:bg-red-600"
-            onClick={handleDelete}
-            disabled={isDeleting}
-          >
-            {isDeleting ? "Excluindo..." : "Excluir"}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <Button
+      variant="destructive"
+      size="sm"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        handleDelete();
+      }}
+      disabled={isDeleting}
+      aria-label="Excluir artigo"
+    >
+      <Trash2 className="h-4 w-4" />
+    </Button>
   );
 }
