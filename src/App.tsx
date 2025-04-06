@@ -14,6 +14,7 @@ import CreateArticle from "@/pages/CreateArticle";
 import ArticleDetail from "@/pages/ArticleDetail";
 import SavedArticles from "@/pages/SavedArticles";
 import UserView from "@/pages/UserView";
+import EditArticle from "@/pages/EditArticle";
 
 function App() {
   useEffect(() => {
@@ -32,6 +33,7 @@ function App() {
             <Route path="/user/:id" element={<UserView />} />
             <Route path="/criar-artigo" element={<CreateArticle />} />
             <Route path="/article/:id" element={<ArticleDetail />} />
+            <Route path="/edit-article/:id" element={<EditArticle />} />
             <Route path="/saved-articles" element={<SavedArticles />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

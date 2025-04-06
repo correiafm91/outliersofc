@@ -16,6 +16,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { supabase, getNotificationsWithActors, Notification } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { CheckCircle } from "lucide-react";
 
 export function NotificationMenu() {
   const { user } = useAuth();
@@ -132,22 +133,64 @@ export function NotificationMenu() {
   // Get notification text based on type
   const getNotificationText = (notification: Notification) => {
     const actorName = notification.actor?.username || "Alguém";
+    const isVerified = notification.actor?.username === "Outliers Oficial";
     
     switch (notification.type) {
       case 'follow':
-        return `${actorName} começou a seguir você`;
+        return (
+          <span className="flex items-center">
+            <span>{actorName}</span>
+            {isVerified && <CheckCircle className="h-3 w-3 text-blue-500 ml-1" />}
+            <span className="ml-1">começou a seguir você</span>
+          </span>
+        );
       case 'like':
-        return `${actorName} curtiu seu artigo "${notification.article?.title || 'um artigo'}"`;
+        return (
+          <span className="flex items-center">
+            <span>{actorName}</span>
+            {isVerified && <CheckCircle className="h-3 w-3 text-blue-500 ml-1" />}
+            <span className="ml-1">curtiu seu artigo "{notification.article?.title || 'um artigo'}"</span>
+          </span>
+        );
       case 'comment':
-        return `${actorName} comentou em "${notification.article?.title || 'seu artigo'}"`;
+        return (
+          <span className="flex items-center">
+            <span>{actorName}</span>
+            {isVerified && <CheckCircle className="h-3 w-3 text-blue-500 ml-1" />}
+            <span className="ml-1">comentou em "{notification.article?.title || 'seu artigo'}"</span>
+          </span>
+        );
       case 'comment_like':
-        return `${actorName} curtiu seu comentário`;
+        return (
+          <span className="flex items-center">
+            <span>{actorName}</span>
+            {isVerified && <CheckCircle className="h-3 w-3 text-blue-500 ml-1" />}
+            <span className="ml-1">curtiu seu comentário</span>
+          </span>
+        );
       case 'comment_reply':
-        return `${actorName} respondeu ao seu comentário`;
+        return (
+          <span className="flex items-center">
+            <span>{actorName}</span>
+            {isVerified && <CheckCircle className="h-3 w-3 text-blue-500 ml-1" />}
+            <span className="ml-1">respondeu ao seu comentário</span>
+          </span>
+        );
       case 'comment_mention':
-        return `${actorName} mencionou você em um comentário`;
+        return (
+          <span className="flex items-center">
+            <span>{actorName}</span>
+            {isVerified && <CheckCircle className="h-3 w-3 text-blue-500 ml-1" />}
+            <span className="ml-1">mencionou você em um comentário</span>
+          </span>
+        );
       default:
-        return `Nova notificação de ${actorName}`;
+        return (
+          <span className="flex items-center">
+            <span>Nova notificação de {actorName}</span>
+            {isVerified && <CheckCircle className="h-3 w-3 text-blue-500 ml-1" />}
+          </span>
+        );
     }
   };
 
@@ -216,12 +259,14 @@ export function NotificationMenu() {
                 onClick={() => markAsRead(notification.id)}
               >
                 <DropdownMenuItem className={`flex p-4 border-b border-zinc-800 cursor-pointer ${!notification.is_read ? 'bg-zinc-800/40' : ''}`}>
-                  <Avatar className="h-8 w-8 mr-3">
-                    <AvatarImage src={notification.actor?.avatar_url || undefined} />
-                    <AvatarFallback className="bg-zinc-700">
-                      {notification.actor?.username?.charAt(0).toUpperCase() || "?"}
-                    </AvatarFallback>
-                  </Avatar>
+                  <Link to={`/user/${notification.actor?.id || ''}`} onClick={(e) => e.stopPropagation()} className="h-8 w-8 mr-3">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={notification.actor?.avatar_url || undefined} />
+                      <AvatarFallback className="bg-zinc-700">
+                        {notification.actor?.username?.charAt(0).toUpperCase() || "?"}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Link>
                   <div className="flex-1 space-y-1">
                     <p className="text-sm">{getNotificationText(notification)}</p>
                     <p className="text-xs text-zinc-500">

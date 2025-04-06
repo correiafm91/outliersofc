@@ -241,7 +241,7 @@ export default function ArticleDetail() {
                           Editar
                         </Button>
                       </Link>
-                      <DeleteArticleButton articleId={article.id} />
+                      <DeleteArticleButton articleId={article.id} redirectTo="/" />
                     </div>
                   )}
                 </div>
@@ -264,11 +264,12 @@ export default function ArticleDetail() {
           <section className="mb-12">
             <div className="container mx-auto px-4">
               <AnimatedElement className="animate-delay-300">
-                <div className="w-full overflow-hidden rounded-xl">
+                <div className="w-full">
                   <img 
                     src={article.imageUrl} 
                     alt={article.title} 
                     className="w-full object-contain max-h-[80vh]"
+                    loading="lazy"
                   />
                 </div>
               </AnimatedElement>

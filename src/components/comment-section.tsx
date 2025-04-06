@@ -122,15 +122,18 @@ export function CommentSection({ articleId }: CommentSectionProps) {
   const fetchComments = async () => {
     setIsLoading(true);
     try {
-      // First, get all comments for this article
+      // First, get all comments for this article with their user profiles
       const { data: commentsData, error: commentsError } = await supabase
         .from('comments')
-        .select('id, content, created_at, user_id, article_id, parent_id, mention_user_id, profiles:user_id(id, username, avatar_url)')
+        .select(`
+          id, content, created_at, user_id, article_id, parent_id, mention_user_id
+        `)
         .eq('article_id', articleId)
         .order('created_at', { ascending: false });
       
       if (commentsError) {
         console.error('Erro ao carregar comentários:', commentsError);
+        setIsLoading(false);
         return;
       }
       
@@ -140,38 +143,42 @@ export function CommentSection({ articleId }: CommentSectionProps) {
         return;
       }
       
-      // Transform to the expected format with default values for parent_id and mention_user_id
-      const formattedComments: CommentData[] = commentsData.map(comment => ({
-        ...comment,
-        parent_id: comment.parent_id || null,
-        mention_user_id: comment.mention_user_id || null,
-        profiles: comment.profiles as unknown as CommentProfile
-      }));
+      // Get profiles for all comment authors
+      const userIds = [...new Set(commentsData.map(comment => comment.user_id))];
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url')
+        .in('id', userIds);
+      
+      if (profilesError) {
+        console.error('Erro ao carregar perfis de usuários:', profilesError);
+        setIsLoading(false);
+        return;
+      }
+      
+      // Add profiles to comments
+      const commentsWithProfiles = commentsData.map(comment => {
+        const profile = profiles?.find(p => p.id === comment.user_id);
+        return {
+          ...comment,
+          profiles: profile || {
+            id: comment.user_id,
+            username: 'Usuário',
+            avatar_url: null
+          }
+        };
+      });
       
       // For comments with parent_id, get the username of the parent comment's author
-      const commentsWithReplyInfo = await Promise.all(formattedComments.map(async (comment) => {
+      const commentsWithReplyInfo = await Promise.all(commentsWithProfiles.map(async (comment) => {
         if (comment.parent_id) {
-          // Get the parent comment's user
-          const { data: parentComment } = await supabase
-            .from('comments')
-            .select('user_id')
-            .eq('id', comment.parent_id)
-            .single();
-            
+          // Get the parent comment's user id
+          const parentComment = commentsWithProfiles.find(c => c.id === comment.parent_id);
           if (parentComment) {
-            // Get the username of the parent comment's author
-            const { data: parentUser } = await supabase
-              .from('profiles')
-              .select('username')
-              .eq('id', parentComment.user_id)
-              .single();
-              
-            if (parentUser) {
-              return {
-                ...comment,
-                reply_to: parentUser.username
-              };
-            }
+            return {
+              ...comment,
+              reply_to: parentComment.profiles?.username || null
+            };
           }
         }
         return comment;
@@ -179,23 +186,14 @@ export function CommentSection({ articleId }: CommentSectionProps) {
       
       setComments(commentsWithReplyInfo);
       
-      // Collect unique user IDs from comments for mention suggestions
-      const uniqueCommenters: CommentProfile[] = [];
-      
-      commentsData.forEach(comment => {
-        if (comment.profiles) {
-          const profile = comment.profiles as unknown as CommentProfile;
-          if (profile && profile.id && !uniqueCommenters.some(u => u.id === profile.id)) {
-            uniqueCommenters.push(profile);
-          }
-        }
-      });
-      
-      setMentionedUsers(prev => {
-        const existingIds = new Set(prev.map(u => u.id));
-        const newUsers = uniqueCommenters.filter(u => !existingIds.has(u.id));
-        return [...prev, ...newUsers];
-      });
+      // Collect users for mention suggestions
+      if (profiles) {
+        setMentionedUsers(prev => {
+          const existingIds = new Set(prev.map(u => u.id));
+          const newUsers = profiles.filter(u => !existingIds.has(u.id));
+          return [...prev, ...newUsers];
+        });
+      }
     } catch (error) {
       console.error('Erro ao carregar comentários:', error);
     } finally {
@@ -414,7 +412,10 @@ export function CommentSection({ articleId }: CommentSectionProps) {
             </div>
           </div>
           
-          <div className="flex justify-end">
+          <div className="flex justify-between items-center">
+            <div className="text-xs text-zinc-400">
+              <span>Mencione usuários usando um "@"</span>
+            </div>
             <Button 
               type="submit" 
               disabled={isSubmitting || !commentText.trim()}
@@ -423,12 +424,6 @@ export function CommentSection({ articleId }: CommentSectionProps) {
               {isSubmitting ? "Publicando..." : "Publicar comentário"}
             </Button>
           </div>
-          
-          {mentionedUsers.length > 0 && (
-            <div className="text-xs text-zinc-400">
-              <span>Mencione usuários usando um "@"</span>
-            </div>
-          )}
         </form>
       ) : (
         <div className="bg-zinc-900/50 p-4 rounded-md text-center">
@@ -469,7 +464,7 @@ export function CommentSection({ articleId }: CommentSectionProps) {
               replyToUsername={comment.reply_to}
               mentionUserId={comment.mention_user_id}
               user={{
-                id: comment.profiles?.id || comment.user_id,
+                id: comment.user_id,
                 name: comment.profiles?.username || "Usuário",
                 avatar: comment.profiles?.avatar_url || ""
               }}
