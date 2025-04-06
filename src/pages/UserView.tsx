@@ -124,7 +124,7 @@ export default function UserView() {
         .from('follows')
         .select(`
           follower_id,
-          profiles:follower_id (id, username, avatar_url, sector)
+          profiles!inner:follower_id (id, username, avatar_url, sector)
         `)
         .eq('followed_id', id);
       
@@ -149,7 +149,7 @@ export default function UserView() {
         .from('follows')
         .select(`
           followed_id,
-          profiles:followed_id (id, username, avatar_url, sector)
+          profiles!inner:followed_id (id, username, avatar_url, sector)
         `)
         .eq('follower_id', id);
       

@@ -70,7 +70,7 @@ export default function ArticleDetail() {
             image_url, 
             created_at,
             author_id,
-            profiles:author_id (
+            profiles!inner (
               id, 
               username, 
               avatar_url,
