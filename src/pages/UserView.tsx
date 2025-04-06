@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -23,10 +24,24 @@ interface Follower {
   avatar_url: string | null;
 }
 
+interface Article {
+  id: string;
+  title: string;
+  content: string;
+  category: string;
+  image_url: string;
+  created_at: string;
+  author_id: string;
+  profiles: {
+    username: string;
+    avatar_url: string | null;
+  };
+}
+
 export default function UserView() {
   const { id } = useParams<{ id: string }>();
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [articles, setArticles] = useState([]);
+  const [articles, setArticles] = useState<Article[]>([]);
   const [followers, setFollowers] = useState<Follower[]>([]);
   const [following, setFollowing] = useState<Follower[]>([]);
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -60,7 +75,7 @@ export default function UserView() {
           .from('articles')
           .select(`
             *,
-            profiles:author_id (username, avatar_url)
+            profiles!author_id (username, avatar_url)
           `)
           .eq('author_id', id)
           .order('created_at', { ascending: false });
@@ -80,20 +95,23 @@ export default function UserView() {
 
   const fetchFollowers = async () => {
     try {
+      setLoadingFollowers(true);
       const { data, error } = await supabase
         .from('follows')
-        .select('follower_id, profiles:follower_id(*)')
+        .select(`
+          follower_id,
+          profiles:follower_id (id, username, avatar_url)
+        `)
         .eq('followed_id', id);
       
       if (error) throw error;
       
-      if (data) {
-        const followersList = data.map(row => {
-          return {
-            id: row.follower_id,
-            ...row.profiles
-          };
-        });
+      if (data && data.length > 0) {
+        const followersList: Follower[] = data.map(row => ({
+          id: row.profiles?.id || '',
+          username: row.profiles?.username || '',
+          avatar_url: row.profiles?.avatar_url || null
+        }));
         setFollowers(followersList);
       }
     } catch (error) {
@@ -105,20 +123,23 @@ export default function UserView() {
 
   const fetchFollowing = async () => {
     try {
+      setLoadingFollowing(true);
       const { data, error } = await supabase
         .from('follows')
-        .select('followed_id, profiles:followed_id(*)')
+        .select(`
+          followed_id,
+          profiles:followed_id (id, username, avatar_url)
+        `)
         .eq('follower_id', id);
       
       if (error) throw error;
       
-      if (data) {
-        const followingList = data.map(row => {
-          return {
-            id: row.followed_id,
-            ...row.profiles
-          };
-        });
+      if (data && data.length > 0) {
+        const followingList: Follower[] = data.map(row => ({
+          id: row.profiles?.id || '',
+          username: row.profiles?.username || '',
+          avatar_url: row.profiles?.avatar_url || null
+        }));
         setFollowing(followingList);
       }
     } catch (error) {

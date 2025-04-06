@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, tables } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 
 export interface DeleteArticleButtonProps {
@@ -26,8 +26,7 @@ export function DeleteArticleButton({ articleId, onDeleted, redirectTo }: Delete
 
     try {
       // Delete all comments associated with the article
-      const { error: commentsError } = await supabase
-        .from('comments')
+      const { error: commentsError } = await tables.comments()
         .delete()
         .eq('article_id', articleId);
 
@@ -36,8 +35,7 @@ export function DeleteArticleButton({ articleId, onDeleted, redirectTo }: Delete
       }
 
       // Delete all likes associated with the article
-      const { error: likesError } = await supabase
-        .from('likes')
+      const { error: likesError } = await tables.likes()
         .delete()
         .eq('article_id', articleId);
 
@@ -46,8 +44,7 @@ export function DeleteArticleButton({ articleId, onDeleted, redirectTo }: Delete
       }
 
       // Delete all bookmarks associated with the article
-      const { error: bookmarksError } = await supabase
-        .from('bookmarks')
+      const { error: bookmarksError } = await tables.bookmarks()
         .delete()
         .eq('article_id', articleId);
 
@@ -56,8 +53,7 @@ export function DeleteArticleButton({ articleId, onDeleted, redirectTo }: Delete
       }
 
       // Delete notifications related to the article
-      const { error: notificationsError } = await supabase
-        .from('notifications')
+      const { error: notificationsError } = await tables.notifications()
         .delete()
         .eq('article_id', articleId);
 
@@ -66,8 +62,7 @@ export function DeleteArticleButton({ articleId, onDeleted, redirectTo }: Delete
       }
 
       // Finally delete the article
-      const { error: articleError } = await supabase
-        .from('articles')
+      const { error: articleError } = await tables.articles()
         .delete()
         .eq('id', articleId);
 

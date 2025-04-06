@@ -4,7 +4,7 @@ import { Bookmark } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase, tablesWithoutTypes, BookmarkTable } from "@/integrations/supabase/client";
+import { supabase, tables, BookmarkTable } from "@/integrations/supabase/client";
 
 interface BookmarkButtonProps {
   articleId: string;
@@ -22,7 +22,7 @@ export function BookmarkButton({ articleId, className = "" }: BookmarkButtonProp
 
     const checkBookmarkStatus = async () => {
       try {
-        const { data } = await tablesWithoutTypes.bookmarks()
+        const { data } = await tables.bookmarks()
           .select('id')
           .eq('user_id', user.id)
           .eq('article_id', articleId)
@@ -52,7 +52,7 @@ export function BookmarkButton({ articleId, className = "" }: BookmarkButtonProp
     try {
       if (isBookmarked) {
         // Remove bookmark
-        const { error } = await tablesWithoutTypes.bookmarks()
+        const { error } = await tables.bookmarks()
           .delete()
           .eq('user_id', user.id)
           .eq('article_id', articleId);
@@ -73,7 +73,7 @@ export function BookmarkButton({ articleId, className = "" }: BookmarkButtonProp
           created_at: new Date().toISOString()
         };
         
-        const { error } = await tablesWithoutTypes.bookmarks()
+        const { error } = await tables.bookmarks()
           .insert(newBookmark);
           
         if (error) throw error;

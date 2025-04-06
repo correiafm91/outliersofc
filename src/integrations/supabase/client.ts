@@ -50,7 +50,7 @@ export interface Notification {
 }
 
 // Helper functions to access tables with proper typing
-export const tablesWithoutTypes = {
+export const tables = {
   bookmarks: () => supabase.from('bookmarks'),
   follows: () => supabase.from('follows'),
   notifications: () => supabase.from('notifications'),
@@ -347,7 +347,7 @@ export async function getFollowers(userId: string) {
       .from('follows')
       .select(`
         follower_id,
-        profiles!inner (id, username, avatar_url)
+        profiles:follower_id (id, username, avatar_url)
       `)
       .eq('followed_id', userId);
     
@@ -356,9 +356,9 @@ export async function getFollowers(userId: string) {
     if (!data || data.length === 0) return [];
     
     return data.map(item => ({
-      id: item.profiles.id,
-      username: item.profiles.username,
-      avatar_url: item.profiles.avatar_url
+      id: item.profiles?.id,
+      username: item.profiles?.username,
+      avatar_url: item.profiles?.avatar_url
     }));
   } catch (error) {
     console.error('Error getting followers:', error);
@@ -372,7 +372,7 @@ export async function getFollowing(userId: string) {
       .from('follows')
       .select(`
         followed_id,
-        profiles!inner (id, title)
+        profiles:followed_id (id, username, avatar_url)
       `)
       .eq('follower_id', userId);
     
@@ -381,8 +381,9 @@ export async function getFollowing(userId: string) {
     if (!data || data.length === 0) return [];
     
     return data.map(item => ({
-      id: item.profiles.id,
-      title: item.profiles.title
+      id: item.profiles?.id,
+      username: item.profiles?.username,
+      avatar_url: item.profiles?.avatar_url
     }));
   } catch (error) {
     console.error('Error getting following:', error);

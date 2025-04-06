@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { NavBar } from "@/components/nav-bar";
@@ -7,6 +8,8 @@ import { CalendarIcon, User2Icon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { EditButton } from "@/components/edit-button";
+import { DeleteArticleButton } from "@/components/delete-article-button";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Author {
   id: string;
@@ -31,6 +34,7 @@ export default function ArticleDetail() {
   const [loading, setLoading] = useState(true);
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
     if (id) {
@@ -51,7 +55,7 @@ export default function ArticleDetail() {
           image_url, 
           created_at,
           author_id,
-          profiles:author_id (*)
+          profiles!author_id (id, username, avatar_url, sector)
         `)
         .eq('id', id)
         .single();
@@ -64,10 +68,10 @@ export default function ArticleDetail() {
         const articleWithProfile = {
           ...data,
           author: {
-            id: data.profiles?.id,
-            username: data.profiles?.username,
-            avatar_url: data.profiles?.avatar_url,
-            sector: data.profiles?.sector
+            id: data.profiles?.id || '',
+            username: data.profiles?.username || '',
+            avatar_url: data.profiles?.avatar_url || '',
+            sector: data.profiles?.sector || ''
           }
         };
         setArticle(articleWithProfile);
@@ -128,7 +132,12 @@ export default function ArticleDetail() {
             </div>
           </div>
           <div className="flex gap-2">
-            <EditButton articleId={article.id} />
+            {user?.id === article.author_id && (
+              <>
+                <EditButton articleId={article.id} />
+                <DeleteArticleButton articleId={article.id} redirectTo="/" />
+              </>
+            )}
             <BookmarkButton articleId={article.id} />
           </div>
         </div>
