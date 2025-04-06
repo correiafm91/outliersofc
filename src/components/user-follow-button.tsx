@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { supabase, FollowTable, NotificationTable, tablesWithoutTypes } from "@/integrations/supabase/client";
+import { supabase, FollowTable, NotificationTable, tables } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface UserFollowButtonProps {
@@ -22,7 +22,7 @@ export function UserFollowButton({ userId, username, onFollowChange, className }
     if (!user || user.id === userId) return;
 
     const checkFollowStatus = async () => {
-      const { data, error } = await tablesWithoutTypes.follows()
+      const { data, error } = await tables.follows()
         .select('id')
         .eq('follower_id', user.id)
         .eq('followed_id', userId)
@@ -56,7 +56,7 @@ export function UserFollowButton({ userId, username, onFollowChange, className }
     try {
       if (isFollowing) {
         // Unfollow user
-        const { error } = await tablesWithoutTypes.follows()
+        const { error } = await tables.follows()
           .delete()
           .eq('follower_id', user.id)
           .eq('followed_id', userId);
@@ -79,7 +79,7 @@ export function UserFollowButton({ userId, username, onFollowChange, className }
           created_at: new Date().toISOString()
         };
         
-        const { error } = await tablesWithoutTypes.follows()
+        const { error } = await tables.follows()
           .insert(newFollow);
         
         if (error) throw error;
@@ -98,7 +98,7 @@ export function UserFollowButton({ userId, username, onFollowChange, className }
           article_id: null
         };
         
-        await tablesWithoutTypes.notifications()
+        await tables.notifications()
           .insert(newNotification);
         
         toast({

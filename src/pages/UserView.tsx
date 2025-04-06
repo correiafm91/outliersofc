@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -75,7 +74,7 @@ export default function UserView() {
           .from('articles')
           .select(`
             *,
-            profiles!author_id (username, avatar_url)
+            profiles!inner (username, avatar_url)
           `)
           .eq('author_id', id)
           .order('created_at', { ascending: false });
@@ -100,7 +99,7 @@ export default function UserView() {
         .from('follows')
         .select(`
           follower_id,
-          profiles:follower_id (id, username, avatar_url)
+          profiles!inner:follower_id (id, username, avatar_url)
         `)
         .eq('followed_id', id);
       
@@ -128,7 +127,7 @@ export default function UserView() {
         .from('follows')
         .select(`
           followed_id,
-          profiles:followed_id (id, username, avatar_url)
+          profiles!inner:followed_id (id, username, avatar_url)
         `)
         .eq('follower_id', id);
       

@@ -55,7 +55,7 @@ export default function ArticleDetail() {
           image_url, 
           created_at,
           author_id,
-          profiles!author_id (id, username, avatar_url, sector)
+          profiles:profiles!author_id (id, username, avatar_url, sector)
         `)
         .eq('id', id)
         .single();
@@ -117,37 +117,39 @@ export default function ArticleDetail() {
       <div className="container mx-auto px-4 py-16">
         <div className="mb-8 flex justify-between items-center">
           <div>
-            <h1 className="text-4xl font-bold mb-2">{article.title}</h1>
+            <h1 className="text-4xl font-bold mb-2">{article?.title}</h1>
             <div className="flex items-center gap-4 text-zinc-500">
               <div className="flex items-center gap-2">
                 <User2Icon className="h-4 w-4" />
-                <a href={`/user/${article.author.id}`} className="hover:underline">
-                  {article.author.username}
+                <a href={`/user/${article?.author?.id}`} className="hover:underline">
+                  {article?.author?.username}
                 </a>
               </div>
               <div className="flex items-center gap-2">
                 <CalendarIcon className="h-4 w-4" />
-                {new Date(article.created_at).toLocaleDateString('pt-BR')}
+                {article?.created_at && new Date(article.created_at).toLocaleDateString('pt-BR')}
               </div>
             </div>
           </div>
           <div className="flex gap-2">
-            {user?.id === article.author_id && (
+            {user?.id === article?.author_id && (
               <>
-                <EditButton articleId={article.id} />
-                <DeleteArticleButton articleId={article.id} redirectTo="/" />
+                <EditButton articleId={article?.id || ''} />
+                <DeleteArticleButton articleId={article?.id || ''} redirectTo="/" />
               </>
             )}
-            <BookmarkButton articleId={article.id} />
+            <BookmarkButton articleId={article?.id || ''} />
           </div>
         </div>
-        <img
-          src={article.image_url}
-          alt={article.title}
-          className="w-full rounded-lg mb-8 object-cover max-h-[400px]"
-        />
+        {article?.image_url && (
+          <img
+            src={article.image_url}
+            alt={article.title}
+            className="w-full rounded-lg mb-8 object-cover max-h-[400px]"
+          />
+        )}
         <div className="prose prose-invert max-w-none">
-          <div dangerouslySetInnerHTML={{ __html: article.content }} />
+          {article?.content && <div dangerouslySetInnerHTML={{ __html: article.content }} />}
         </div>
       </div>
       <Footer />

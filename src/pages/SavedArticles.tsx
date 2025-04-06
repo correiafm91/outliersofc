@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { NavBar } from "@/components/nav-bar";
@@ -7,7 +8,7 @@ import { AnimatedElement } from "@/components/ui/animated-element";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase, tablesWithoutTypes } from "@/integrations/supabase/client";
+import { supabase, tables } from "@/integrations/supabase/client";
 
 export default function SavedArticles() {
   const [savedArticles, setSavedArticles] = useState([]);
@@ -26,7 +27,7 @@ export default function SavedArticles() {
       setIsLoading(true);
       
       try {
-        const { data: bookmarks, error: bookmarksError } = await tablesWithoutTypes.bookmarks()
+        const { data: bookmarks, error: bookmarksError } = await tables.bookmarks()
           .select('*')
           .eq('user_id', user.id);
 

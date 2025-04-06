@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -60,6 +61,9 @@ export const tables = {
   comments: () => supabase.from('comments')
 };
 
+// Alias for tables without specific return types
+export const tablesWithoutTypes = tables;
+
 export const getNotificationsWithActors = async (userId: string): Promise<Notification[]> => {
   try {
     const { data, error } = await supabase
@@ -72,12 +76,12 @@ export const getNotificationsWithActors = async (userId: string): Promise<Notifi
         article_id,
         type,
         is_read,
-        actor:actor_id (
+        actor:profiles!actor_id (
           id,
           username,
           avatar_url
         ),
-        article:article_id (
+        article:articles!article_id (
           id,
           title
         )
@@ -347,7 +351,7 @@ export async function getFollowers(userId: string) {
       .from('follows')
       .select(`
         follower_id,
-        profiles:follower_id (id, username, avatar_url)
+        profiles:profiles!follower_id (id, username, avatar_url)
       `)
       .eq('followed_id', userId);
     
@@ -372,7 +376,7 @@ export async function getFollowing(userId: string) {
       .from('follows')
       .select(`
         followed_id,
-        profiles:followed_id (id, username, avatar_url)
+        profiles:profiles!followed_id (id, username, avatar_url)
       `)
       .eq('follower_id', userId);
     
