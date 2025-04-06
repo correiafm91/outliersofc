@@ -125,7 +125,7 @@ export function CommentSection({ articleId }: CommentSectionProps) {
       // First, get all comments for this article
       const { data: commentsData, error: commentsError } = await supabase
         .from('comments')
-        .select('*, profiles:user_id(id, username, avatar_url)')
+        .select('id, content, created_at, user_id, article_id, parent_id, mention_user_id, profiles:user_id(id, username, avatar_url)')
         .eq('article_id', articleId)
         .order('created_at', { ascending: false });
       
@@ -148,7 +148,36 @@ export function CommentSection({ articleId }: CommentSectionProps) {
         profiles: comment.profiles as unknown as CommentProfile
       }));
       
-      setComments(formattedComments);
+      // For comments with parent_id, get the username of the parent comment's author
+      const commentsWithReplyInfo = await Promise.all(formattedComments.map(async (comment) => {
+        if (comment.parent_id) {
+          // Get the parent comment's user
+          const { data: parentComment } = await supabase
+            .from('comments')
+            .select('user_id')
+            .eq('id', comment.parent_id)
+            .single();
+            
+          if (parentComment) {
+            // Get the username of the parent comment's author
+            const { data: parentUser } = await supabase
+              .from('profiles')
+              .select('username')
+              .eq('id', parentComment.user_id)
+              .single();
+              
+            if (parentUser) {
+              return {
+                ...comment,
+                reply_to: parentUser.username
+              };
+            }
+          }
+        }
+        return comment;
+      }));
+      
+      setComments(commentsWithReplyInfo);
       
       // Collect unique user IDs from comments for mention suggestions
       const uniqueCommenters: CommentProfile[] = [];
@@ -397,7 +426,7 @@ export function CommentSection({ articleId }: CommentSectionProps) {
           
           {mentionedUsers.length > 0 && (
             <div className="text-xs text-zinc-400">
-              <span>Dica: Mencione usuários usando @ (ex: @{mentionedUsers[0]?.username})</span>
+              <span>Mencione usuários usando um "@"</span>
             </div>
           )}
         </form>

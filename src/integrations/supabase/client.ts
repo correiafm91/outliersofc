@@ -181,3 +181,6 @@ export const ensureColumnsExist = async () => {
     console.error("Error checking or adding columns:", error);
   }
 };
+
+// Export the function to create buckets (needed for profile-edit-form.tsx)
+export { ensureBucketExists } from './create-buckets';

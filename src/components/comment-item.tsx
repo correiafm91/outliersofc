@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Heart, Trash2, Reply } from 'lucide-react';
+import { Heart, Trash2, Reply, CheckCircle } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from '@/contexts/AuthContext';
@@ -57,11 +57,19 @@ export function CommentItem({
   const [likeId, setLikeId] = useState<string | null>(null);
   const [isLikeLoading, setIsLikeLoading] = useState(false);
   const [mentionedUser, setMentionedUser] = useState<{ id: string, username: string } | null>(null);
+  const [isVerified, setIsVerified] = useState(false);
   const isOwner = currentUser?.id === userId;
   const formattedDate = formatDistanceToNow(new Date(createdAt), { 
     addSuffix: true,
     locale: ptBR 
   });
+
+  // Check if the user is verified (Outliers Oficial)
+  useEffect(() => {
+    if (user.name === "Outliers Oficial") {
+      setIsVerified(true);
+    }
+  }, [user.name]);
 
   // Format text to highlight mentions
   const formattedText = text.replace(
@@ -149,6 +157,21 @@ export function CommentItem({
     setIsDeleting(true);
     
     try {
+      // Delete all likes to this comment first
+      await supabase
+        .from('comment_likes')
+        .delete()
+        .eq('comment_id', id);
+        
+      // Delete any notifications related to this comment
+      await supabase
+        .from('notifications')
+        .delete()
+        .eq('type', 'comment_like')
+        .eq('article_id', articleId)
+        .eq('actor_id', userId);
+      
+      // Finally delete the comment itself
       const { error } = await supabase
         .from('comments')
         .delete()
@@ -267,10 +290,13 @@ export function CommentItem({
         
         <div className="flex-1">
           <div className="flex justify-between items-start">
-            <div>
+            <div className="flex items-center">
               <Link to={`/user/${user.id}`} className="font-medium text-white hover:underline">
                 {user.name}
               </Link>
+              {isVerified && (
+                <CheckCircle className="h-4 w-4 text-blue-500 ml-1" />
+              )}
               <span className="ml-2 text-xs text-zinc-400">{formattedDate}</span>
             </div>
             

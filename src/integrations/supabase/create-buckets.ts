@@ -28,7 +28,7 @@ export async function createRequiredBuckets(): Promise<boolean> {
 }
 
 // Function to ensure a bucket exists
-async function ensureBucketExists(bucketName: string): Promise<boolean> {
+export async function ensureBucketExists(bucketName: string): Promise<boolean> {
   try {
     console.log(`Checking if bucket exists: ${bucketName}`);
     // First try to get the bucket to check if it exists
@@ -84,6 +84,3 @@ async function ensureBucketExists(bucketName: string): Promise<boolean> {
     return false;
   }
 }
-
-// Export the ensureBucketExists function so it can be used elsewhere
-export { ensureBucketExists };

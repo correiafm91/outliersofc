@@ -1,16 +1,19 @@
+
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { Edit, CheckCircle } from "lucide-react";
 import { NavBar } from "@/components/nav-bar";
 import { Footer } from "@/components/footer";
 import { CommentSection } from "@/components/comment-section";
 import { LikeButton } from "@/components/like-button";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { ShareButton } from "@/components/share-button";
+import { DeleteArticleButton } from "@/components/delete-article-button";
 import { UserFollowButton } from "@/components/user-follow-button";
 import { AnimatedElement } from "@/components/ui/animated-element";
-import { AnimatedText } from "@/components/ui/animated-text";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -27,6 +30,7 @@ interface ArticleData {
     name: string;
     avatar: string;
     sector: string;
+    isVerified?: boolean;
   };
   stats: {
     likeCount: number;
@@ -42,6 +46,7 @@ export default function ArticleDetail() {
   const [currentUrl, setCurrentUrl] = useState("");
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isAuthor = user && article && user.id === article.author.id;
 
   useEffect(() => {
     // Set current URL for sharing
@@ -64,6 +69,7 @@ export default function ArticleDetail() {
             category, 
             image_url, 
             created_at,
+            author_id,
             profiles:author_id (
               id, 
               username, 
@@ -97,6 +103,9 @@ export default function ArticleDetail() {
 
         if (commentError) throw commentError;
 
+        // Check if author is verified (Outliers Oficial)
+        const isVerified = articleData.profiles.username === "Outliers Oficial";
+
         // Format article data
         const formattedArticle: ArticleData = {
           id: articleData.id,
@@ -110,7 +119,8 @@ export default function ArticleDetail() {
             id: articleData.profiles.id,
             name: articleData.profiles.username,
             avatar: articleData.profiles.avatar_url,
-            sector: articleData.profiles.sector || ""
+            sector: articleData.profiles.sector || "",
+            isVerified: isVerified
           },
           stats: {
             likeCount: likeCount || 0,
@@ -131,7 +141,7 @@ export default function ArticleDetail() {
     fetchArticle();
   }, [id, navigate]);
 
-  // Function to reveal elements conforme o scroll
+  // Function to reveal elements as user scrolls
   useEffect(() => {
     const handleScroll = () => {
       const reveals = document.querySelectorAll('.reveal');
@@ -148,7 +158,7 @@ export default function ArticleDetail() {
     };
     
     window.addEventListener('scroll', handleScroll);
-    handleScroll(); // Revelar elementos visíveis no carregamento inicial
+    handleScroll(); // Reveal visible elements on initial load
     
     return () => window.removeEventListener('scroll', handleScroll);
   }, [article]);
@@ -186,31 +196,54 @@ export default function ArticleDetail() {
               <AnimatedElement className="animate-delay-200">
                 <div className="flex items-center space-x-3 mb-8">
                   <div className="relative">
-                    {article.author.avatar ? (
-                      <img 
-                        src={article.author.avatar} 
-                        alt={article.author.name} 
-                        className="w-12 h-12 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-300 text-lg font-medium">
-                        {article.author.name.charAt(0)}
-                      </div>
-                    )}
+                    <Link to={`/user/${article.author.id}`}>
+                      {article.author.avatar ? (
+                        <img 
+                          src={article.author.avatar} 
+                          alt={article.author.name} 
+                          className="w-12 h-12 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-300 text-lg font-medium">
+                          {article.author.name.charAt(0)}
+                        </div>
+                      )}
+                    </Link>
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium">{article.author.name}</span>
+                      <Link to={`/user/${article.author.id}`} className="font-medium hover:underline">{article.author.name}</Link>
+                      {article.author.isVerified && (
+                        <CheckCircle className="h-4 w-4 text-blue-500" />
+                      )}
                     </div>
                     <div className="text-zinc-400 text-sm">
                       {article.author.sector || "Autor"}
                     </div>
                   </div>
                   
-                  <UserFollowButton 
-                    userId={article.author.id} 
-                    username={article.author.name} 
-                  />
+                  {user && user.id !== article.author.id && (
+                    <UserFollowButton 
+                      userId={article.author.id} 
+                      username={article.author.name} 
+                    />
+                  )}
+
+                  {isAuthor && (
+                    <div className="flex gap-2">
+                      <Link to={`/edit-article/${article.id}`}>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="text-blue-500 border-blue-500/20 hover:bg-blue-500/10 hover:text-blue-500 hover:border-blue-500/30"
+                        >
+                          <Edit className="h-4 w-4 mr-2" />
+                          Editar
+                        </Button>
+                      </Link>
+                      <DeleteArticleButton articleId={article.id} />
+                    </div>
+                  )}
                 </div>
               </AnimatedElement>
 
@@ -231,11 +264,11 @@ export default function ArticleDetail() {
           <section className="mb-12">
             <div className="container mx-auto px-4">
               <AnimatedElement className="animate-delay-300">
-                <div className="aspect-video w-full overflow-hidden rounded-xl">
+                <div className="w-full overflow-hidden rounded-xl">
                   <img 
                     src={article.imageUrl} 
                     alt={article.title} 
-                    className="w-full h-full object-cover"
+                    className="w-full object-contain max-h-[80vh]"
                   />
                 </div>
               </AnimatedElement>
@@ -283,11 +316,6 @@ export default function ArticleDetail() {
                   </div>
                   
                   <Separator className="my-8 bg-zinc-800" />
-                  
-                  <AnimatedText 
-                    text="Se você gostou deste artigo, deixe um comentário abaixo compartilhando suas ideias."
-                    className="text-zinc-400 italic text-center"
-                  />
                   
                   {/* Comments Section */}
                   <CommentSection articleId={article.id} />
