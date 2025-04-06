@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -341,3 +340,52 @@ export const ensureColumnsExist = async () => {
     console.error("Erro ao verificar ou adicionar colunas:", error);
   }
 };
+
+export async function getFollowers(userId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('follows')
+      .select(`
+        follower_id,
+        profiles!inner (id, username, avatar_url)
+      `)
+      .eq('followed_id', userId);
+    
+    if (error) throw error;
+    
+    if (!data || data.length === 0) return [];
+    
+    return data.map(item => ({
+      id: item.profiles.id,
+      username: item.profiles.username,
+      avatar_url: item.profiles.avatar_url
+    }));
+  } catch (error) {
+    console.error('Error getting followers:', error);
+    return [];
+  }
+}
+
+export async function getFollowing(userId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('follows')
+      .select(`
+        followed_id,
+        profiles!inner (id, title)
+      `)
+      .eq('follower_id', userId);
+    
+    if (error) throw error;
+    
+    if (!data || data.length === 0) return [];
+    
+    return data.map(item => ({
+      id: item.profiles.id,
+      title: item.profiles.title
+    }));
+  } catch (error) {
+    console.error('Error getting following:', error);
+    return [];
+  }
+}
