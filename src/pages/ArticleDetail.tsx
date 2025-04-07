@@ -9,6 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { EditButton } from "@/components/edit-button";
 import { DeleteArticleButton } from "@/components/delete-article-button";
+import { LikeButton } from "@/components/like-button";
+import { CommentSection } from "@/components/comment-section";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface Author {
@@ -139,6 +141,7 @@ export default function ArticleDetail() {
               </>
             )}
             <BookmarkButton articleId={article?.id || ''} />
+            <LikeButton articleId={article?.id || ''} />
           </div>
         </div>
         {article?.image_url && (
@@ -150,6 +153,10 @@ export default function ArticleDetail() {
         )}
         <div className="prose prose-invert max-w-none">
           {article?.content && <div dangerouslySetInnerHTML={{ __html: article.content }} />}
+        </div>
+        
+        <div className="mt-12 pt-8 border-t border-zinc-800">
+          <CommentSection articleId={article.id} />
         </div>
       </div>
       <Footer />
