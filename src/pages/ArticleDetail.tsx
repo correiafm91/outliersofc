@@ -145,11 +145,21 @@ export default function ArticleDetail() {
           </div>
         </div>
         {article?.image_url && (
-          <img
-            src={article.image_url}
-            alt={article.title}
-            className="w-full rounded-lg mb-8 object-cover max-h-[400px]"
-          />
+          <div className="w-full rounded-lg mb-8 overflow-hidden max-h-[400px]">
+            {article.image_url.endsWith('.mp4') || article.image_url.endsWith('.webm') || article.image_url.endsWith('.mov') ? (
+              <video 
+                src={article.image_url} 
+                controls 
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <img
+                src={article.image_url}
+                alt={article.title}
+                className="w-full object-cover max-h-[400px]"
+              />
+            )}
+          </div>
         )}
         <div className="prose prose-invert max-w-none">
           {article?.content && <div dangerouslySetInnerHTML={{ __html: article.content }} />}

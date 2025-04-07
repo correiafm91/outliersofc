@@ -117,7 +117,12 @@ export default function UserView() {
     }
   };
 
-  const renderSocialLink = (url: string | null, Icon: React.ComponentType) => {
+  const handleFollowStatusChange = (isFollowing: boolean) => {
+    // Update the followers list when follow status changes
+    fetchFollowData();
+  };
+
+  const renderSocialLink = (url: string | null, Icon: React.ComponentType<any>) => {
     if (!url) return null;
     
     return (
@@ -149,7 +154,7 @@ export default function UserView() {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <Avatar className="h-16 w-16">
-                  <AvatarImage src={profile.avatar_url} alt={profile.username} className="object-cover" />
+                  <AvatarImage src={profile.avatar_url || undefined} alt={profile.username} className="object-cover" />
                   <AvatarFallback className="bg-zinc-800 text-zinc-200">
                     {profile.username.charAt(0).toUpperCase()}
                   </AvatarFallback>
@@ -168,6 +173,7 @@ export default function UserView() {
                 <UserFollowButton 
                   userId={id || ''} 
                   username={profile.username}
+                  onFollowChange={handleFollowStatusChange}
                 />
               )}
             </div>
