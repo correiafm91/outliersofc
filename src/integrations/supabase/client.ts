@@ -1,8 +1,9 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+// Use import.meta.env instead of process.env for Vite applications
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -61,7 +62,7 @@ export const tables = {
   comments: () => supabase.from('comments')
 };
 
-// Alias for tables without specific return types
+// Alias for tables without specific return types - for backward compatibility
 export const tablesWithoutTypes = tables;
 
 export const getNotificationsWithActors = async (userId: string): Promise<Notification[]> => {
