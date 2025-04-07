@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 
 // Use import.meta.env instead of process.env for Vite applications
@@ -361,9 +360,9 @@ export async function getFollowers(userId: string) {
     if (!data || data.length === 0) return [];
     
     return data.map(item => ({
-      id: item.profiles?.id,
-      username: item.profiles?.username,
-      avatar_url: item.profiles?.avatar_url
+      id: item.profiles.id,
+      username: item.profiles.username,
+      avatar_url: item.profiles.avatar_url
     }));
   } catch (error) {
     console.error('Error getting followers:', error);
@@ -386,9 +385,9 @@ export async function getFollowing(userId: string) {
     if (!data || data.length === 0) return [];
     
     return data.map(item => ({
-      id: item.profiles?.id,
-      username: item.profiles?.username,
-      avatar_url: item.profiles?.avatar_url
+      id: item.profiles.id,
+      username: item.profiles.username,
+      avatar_url: item.profiles.avatar_url
     }));
   } catch (error) {
     console.error('Error getting following:', error);

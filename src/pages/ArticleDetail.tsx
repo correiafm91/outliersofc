@@ -70,10 +70,10 @@ export default function ArticleDetail() {
         const articleWithProfile = {
           ...data,
           author: {
-            id: data.profiles?.id || '',
-            username: data.profiles?.username || '',
-            avatar_url: data.profiles?.avatar_url || '',
-            sector: data.profiles?.sector || ''
+            id: data.profiles.id || '',
+            username: data.profiles.username || '',
+            avatar_url: data.profiles.avatar_url || '',
+            sector: data.profiles.sector || ''
           }
         };
         setArticle(articleWithProfile);

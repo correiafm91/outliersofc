@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { NavBar } from "@/components/nav-bar";
 import { Footer } from "@/components/footer";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -164,7 +165,10 @@ export default function UserView() {
                 </div>
               </div>
               {user && user.id !== id && (
-                <UserFollowButton targetUserId={id || ''} />
+                <UserFollowButton 
+                  userId={id || ''} 
+                  username={profile.username}
+                />
               )}
             </div>
 
@@ -199,9 +203,13 @@ export default function UserView() {
                         id={article.id}
                         title={article.title}
                         imageUrl={article.image_url}
-                        createdAt={article.created_at}
-                        content={article.content}
+                        date={new Date(article.created_at).toLocaleDateString('pt-BR')}
+                        authorName={profile.username}
+                        authorId={profile.id}
+                        authorAvatar={profile.avatar_url}
+                        excerpt={article.content.substring(0, 100).replace(/<[^>]*>/g, '') + '...'}
                         category={article.category}
+                        showActions={true}
                       />
                     ))}
                   </div>
